@@ -10,8 +10,8 @@ using UnityEditor;
 using UnityEngine;
 using ToonyColorsPro.Utilities;
 using System.IO;
+using System.Reflection;
 using System.Text.RegularExpressions;
-using ToonyColorsPro.CustomShaderImporter;
 using UnityEngine.Rendering;
 
 // Custom material inspector for generated shader
@@ -54,6 +54,8 @@ namespace ToonyColorsPro
 			MaterialProperty[] _properties;
 			static public bool _isURP;
 			static public bool _isMobile;
+			static GUIStyle orangeHeaderStyle;
+			static GUIStyle orangeBoldLabelStyle;
 
 			//--------------------------------------------------------------------------------------------------
 
@@ -82,6 +84,38 @@ namespace ToonyColorsPro
 			static public void PopDisableProperty()
 			{
 				DisableNextProperty = DisableStack.Pop();
+			}
+
+			static Color OrangeColor
+			{
+				get { return EditorGUIUtility.isProSkin ? new Color32(255, 170, 60, 255) : new Color32(210, 110, 0, 255); }
+			}
+
+			static GUIStyle OrangeHeaderStyle
+			{
+				get
+				{
+					if (orangeHeaderStyle == null)
+					{
+						orangeHeaderStyle = new GUIStyle(EditorStyles.largeLabel);
+						orangeHeaderStyle.fontStyle = FontStyle.Bold;
+						orangeHeaderStyle.normal.textColor = OrangeColor;
+					}
+					return orangeHeaderStyle;
+				}
+			}
+
+			internal static GUIStyle OrangeBoldLabelStyle
+			{
+				get
+				{
+					if (orangeBoldLabelStyle == null)
+					{
+						orangeBoldLabelStyle = new GUIStyle(EditorStyles.boldLabel);
+						orangeBoldLabelStyle.normal.textColor = OrangeColor;
+					}
+					return orangeBoldLabelStyle;
+				}
 			}
 
 			//--------------------------------------------------------------------------------------------------
@@ -152,10 +186,11 @@ namespace ToonyColorsPro
 
 						// Get source code lines to parse comment-based inspector
 						string[] lines;
-						if (shaderImporter != null && shaderImporter is TCP2_ShaderImporter)
+						var importerSourceCode = GetShaderSourceCodeFromImporter(shaderImporter);
+						if (importerSourceCode != null)
 						{
 							// .tcp2shader file, parse the generated source for comment-based inspector
-							lines = ((TCP2_ShaderImporter) shaderImporter).shaderSourceCode.Split(new string[] {"\r", "\n"}, StringSplitOptions.None);
+							lines = importerSourceCode.Split(new string[] {"\r", "\n"}, StringSplitOptions.None);
 						}
 						else
 						{
@@ -324,6 +359,17 @@ namespace ToonyColorsPro
 				guiCommands[propertyIndex].Add(command);
 			}
 
+			static string GetShaderSourceCodeFromImporter(AssetImporter importer)
+			{
+				if (importer == null || importer.GetType().Name != "TCP2_ShaderImporter")
+				{
+					return null;
+				}
+
+				var sourceCodeField = importer.GetType().GetField("shaderSourceCode", BindingFlags.Instance | BindingFlags.Public);
+				return sourceCodeField == null ? null : sourceCodeField.GetValue(importer) as string;
+			}
+
 			//--------------------------------------------------------------------------------------------------
 
 			void UpdateOutlineProp(Material material, bool needsOutline)
@@ -385,7 +431,7 @@ namespace ToonyColorsPro
 				EditorGUIUtility.labelWidth = labelWidth - 50;
 
 				// Header
-				GUILayout.Label(TCP2_GUI.TempContent(EditorGUIUtility.currentViewWidth > 355f ? "Toony Colors Pro 2 - Hybrid Shader" : "TCP2 - Hybrid Shader"), SGUILayout.Styles.OrangeHeader);
+				GUILayout.Label(TCP2_GUI.TempContent(EditorGUIUtility.currentViewWidth > 355f ? "Toony Colors Pro 2 - Hybrid Shader" : "TCP2 - Hybrid Shader"), OrangeHeaderStyle);
 				TCP2_GUI.Separator();
 
 				// Mobile mode
@@ -393,7 +439,7 @@ namespace ToonyColorsPro
 				TCP2_GUI.Separator();
 
 				// Specific
-				GUILayout.Label(TCP2_GUI.TempContent("Transparency"), SGUILayout.Styles.OrangeBoldLabel);
+				GUILayout.Label(TCP2_GUI.TempContent("Transparency"), OrangeBoldLabelStyle);
 				HandleRenderingMode();
 
 				// Iterate properties
@@ -784,7 +830,7 @@ namespace ToonyColorsPro
 					guiContent = new GUIContent(label);
 
 				if (MaterialInspector_Hybrid.ShowNextProperty)
-					GUILayout.Label(guiContent, SGUILayout.Styles.OrangeBoldLabel);
+					GUILayout.Label(guiContent, MaterialInspector_Hybrid.OrangeBoldLabelStyle);
 			}
 		}
 		internal class GC_Label : GUICommand

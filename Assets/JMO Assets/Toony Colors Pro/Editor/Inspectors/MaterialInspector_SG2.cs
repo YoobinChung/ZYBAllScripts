@@ -11,7 +11,6 @@ using UnityEngine;
 using ToonyColorsPro.Utilities;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
-using RenderingMode = ToonyColorsPro.ShaderGenerator.MaterialInspector_Hybrid.RenderingMode;
 
 // Custom material inspector for generated shader
 
@@ -31,6 +30,13 @@ namespace ToonyColorsPro
 			private MaterialProperty[] _properties;
 			private Stack<bool> toggledGroups = new Stack<bool>();
 			private bool hasAutoTransparency;
+
+			private enum RenderingMode
+			{
+				Opaque,
+				Fade,
+				Transparent
+			}
 
 			//--------------------------------------------------------------------------------------------------
 

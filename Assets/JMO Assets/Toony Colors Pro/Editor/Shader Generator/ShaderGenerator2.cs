@@ -85,6 +85,35 @@ namespace ToonyColorsPro
 				return window;
 			}
 
+			static void SetLegacySurfaceInspectorNeedsUpdate()
+			{
+				var inspectorType = FindType("ToonyColorsPro.Legacy.TCP2_MaterialInspector_SurfacePBS_SG");
+				if (inspectorType == null)
+				{
+					return;
+				}
+
+				var needsUpdateField = inspectorType.GetField("InspectorNeedsUpdate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+				if (needsUpdateField != null)
+				{
+					needsUpdateField.SetValue(null, true);
+				}
+			}
+
+			static Type FindType(string typeName)
+			{
+				foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+				{
+					var type = assembly.GetType(typeName);
+					if (type != null)
+					{
+						return type;
+					}
+				}
+
+				return null;
+			}
+
 			//Only one window at a time, so this should always be the correct value.
 			//Used to create communication between Shader Properties and Custom Material Properties
 			internal static Config CurrentConfig { get; private set; }
@@ -922,7 +951,7 @@ namespace ToonyColorsPro
 							//Needed in case of switching between specular/metallic and related
 							//options, while the inspector is opened, so that it shows/hides the
 							//relevant properties according to the changes.
-							TCP2_MaterialInspector_SurfacePBS_SG.InspectorNeedsUpdate = true;
+							SetLegacySurfaceInspectorNeedsUpdate();
 						}
 					}
 					GUI.color = guiColor;
@@ -4009,6 +4038,7 @@ namespace ToonyColorsPro
 					}
 				}
 			}
+
 		}
 	}
 }

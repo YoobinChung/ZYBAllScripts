@@ -284,13 +284,18 @@ namespace ToonyColorsPro
 					string readmePath = GetFileSafe(Application.dataPath, "!ToonyColorsPro Readme.txt");
 					if (!string.IsNullOrEmpty(readmePath))
 					{
-						readmePath = ToSystemSlashPath(Path.GetDirectoryName(readmePath));
+						readmePathFull = ToSystemSlashPath(Path.GetDirectoryName(readmePath));
 					}
 				}
 
 				if (readmePathFull == null)
 				{
-					Debug.LogError("Couldn't find the path to '!ToonyColorsPro Readme.txt', you might have to reimport Toony Colors Pro.\nThis file is necessary to figure out the root directory of Toony Colors Pro.");
+					readmePathFull = FindRootPathFromKnownAssets();
+				}
+
+				if (readmePathFull == null)
+				{
+					Debug.LogError("Couldn't find the Toony Colors Pro root directory. Make sure the Editor/Utils, Shader Generator, Shader Templates 2, or Editor/Icons folders are imported.");
 					return null;
 				}
 
@@ -306,6 +311,47 @@ namespace ToonyColorsPro
 #endif
 				}
 				return readmePathFull;
+			}
+
+			static string FindRootPathFromKnownAssets()
+			{
+				string rootPath = FindRootPathFromAssetSearch("TCP2_Utils t:MonoScript", "/Editor/Utils/TCP2_Utils.cs");
+				if (!string.IsNullOrEmpty(rootPath))
+				{
+					return rootPath;
+				}
+
+				rootPath = FindRootPathFromAssetSearch("ShaderGenerator2 t:MonoScript", "/Editor/Shader Generator/ShaderGenerator2.cs");
+				if (!string.IsNullOrEmpty(rootPath))
+				{
+					return rootPath;
+				}
+
+				rootPath = FindRootPathFromAssetSearch("SG2_Template_Default t:TextAsset", "/Shader Templates 2/SG2_Template_Default.txt");
+				if (!string.IsNullOrEmpty(rootPath))
+				{
+					return rootPath;
+				}
+
+				return FindRootPathFromAssetSearch("TCP2_CogIcon t:Texture2D", "/Editor/Icons/TCP2_CogIcon.png");
+			}
+
+			static string FindRootPathFromAssetSearch(string filter, string expectedPathEnd)
+			{
+				string[] guids = AssetDatabase.FindAssets(filter);
+				foreach (string guid in guids)
+				{
+					string unityPath = AssetDatabase.GUIDToAssetPath(guid).Replace(@"\", "/");
+					if (!unityPath.EndsWith(expectedPathEnd, StringComparison.OrdinalIgnoreCase))
+					{
+						continue;
+					}
+
+					string rootPath = unityPath.Substring(0, unityPath.Length - expectedPathEnd.Length);
+					return UnityRelativeToSystemPath(rootPath);
+				}
+
+				return null;
 			}
 
 			/// <summary>

@@ -17,6 +17,7 @@ namespace ToonyColorsPro
 	{
 		public static class TCP2_GUI
 		{
+			const string ShaderGenerator2DocumentationUrl = "https://jeanmoreno.com/unity/toonycolorspro/doc/shader_generator_2";
 			static GUIContent tempGuiContent = new GUIContent();
 
 			public static GUIContent TempContent(string label, Texture2D icon)
@@ -361,7 +362,7 @@ namespace ToonyColorsPro
 			{
 				get
 				{
-					return ToonyColorsPro.ShaderGenerator.SGUILayout.Styles.OrangeBoldLabel;
+					return OrangeBoldLabel;
 				}
 			}
 
@@ -473,9 +474,28 @@ namespace ToonyColorsPro
 						_BigHeaderLabel = new GUIStyle(EditorStyles.largeLabel);
 						_BigHeaderLabel.fontStyle = FontStyle.Bold;
 						_BigHeaderLabel.fixedHeight = 30;
-						_BigHeaderLabel.normal.textColor = ToonyColorsPro.ShaderGenerator.SGUILayout.Styles.OrangeColor;
+						_BigHeaderLabel.normal.textColor = OrangeColor;
 					}
 					return _BigHeaderLabel;
+				}
+			}
+
+			private static Color OrangeColor
+			{
+				get { return EditorGUIUtility.isProSkin ? new Color32(255, 170, 60, 255) : new Color32(210, 110, 0, 255); }
+			}
+
+			private static GUIStyle _OrangeBoldLabel;
+			internal static GUIStyle OrangeBoldLabel
+			{
+				get
+				{
+					if (_OrangeBoldLabel == null)
+					{
+						_OrangeBoldLabel = new GUIStyle(EditorStyles.boldLabel);
+						_OrangeBoldLabel.normal.textColor = OrangeColor;
+					}
+					return _OrangeBoldLabel;
 				}
 			}
 
@@ -644,7 +664,7 @@ namespace ToonyColorsPro
 				if (Button(rect, HelpIcon, "?"))
 				{
 					string append = string.IsNullOrEmpty(helpAnchor) ? helpTopic : helpAnchor;
-					Application.OpenURL(ToonyColorsPro.ShaderGenerator.ShaderGenerator2.DOCUMENTATION_URL + "#" + append);
+					Application.OpenURL(ShaderGenerator2DocumentationUrl + "#" + append);
 				}
 			}
 			public static void HelpButtonSG2(string helpTopic, string helpAnchor = null)
@@ -652,7 +672,7 @@ namespace ToonyColorsPro
 				if (Button(HelpIcon, "?"))
 				{
 					string append = string.IsNullOrEmpty(helpAnchor) ? helpTopic : helpAnchor;
-					Application.OpenURL(ToonyColorsPro.ShaderGenerator.ShaderGenerator2.DOCUMENTATION_URL + "#" + append);
+					Application.OpenURL(ShaderGenerator2DocumentationUrl + "#" + append);
 				}
 			}
 
@@ -1012,7 +1032,7 @@ namespace ToonyColorsPro
 
 			public override void OnGUI(Rect position, MaterialProperty prop, string label, MaterialEditor editor)
 			{
-				TCP2_GUI.HeaderAndHelp(position, header, null, help, ToonyColorsPro.ShaderGenerator.SGUILayout.Styles.OrangeBoldLabel);
+				TCP2_GUI.HeaderAndHelp(position, header, null, help, TCP2_GUI.OrangeBoldLabel);
 			}
 
 			public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
@@ -1392,7 +1412,7 @@ namespace ToonyColorsPro
 						prop.textureValue = texture;
 
 						//Open for editing
-						TCP2_RampGenerator.OpenForEditing(texture, editor.targets, true, !overwriteExistingFile);
+						OpenRampGeneratorIfAvailable(texture, editor.targets, true, !overwriteExistingFile);
 					}
 				}
 				buttonRect.x += buttonRect.width;
@@ -1400,9 +1420,38 @@ namespace ToonyColorsPro
 				GUI.enabled = (assetImporter != null) && (assetImporter.userData.StartsWith("GRADIENT") || assetImporter.userData.StartsWith("gradient:")) && !prop.hasMixedValue;
 				if (GUI.Button(buttonRect, GUI.enabled ? editButtonLabel : editButtonDisabledLabel, EditorStyles.miniButtonRight))
 				{
-					TCP2_RampGenerator.OpenForEditing((Texture2D)prop.textureValue, editor.targets, true, false);
+					OpenRampGeneratorIfAvailable((Texture2D)prop.textureValue, editor.targets, true, false);
 				}
 				GUI.enabled = enabled;
+			}
+
+			static void OpenRampGeneratorIfAvailable(Texture2D texture, UnityEngine.Object[] targets, bool editMode, bool justCreated)
+			{
+				var rampGeneratorType = FindType("ToonyColorsPro.TCP2_RampGenerator");
+				if (rampGeneratorType == null)
+				{
+					return;
+				}
+
+				var openForEditing = rampGeneratorType.GetMethod("OpenForEditing", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+				if (openForEditing != null)
+				{
+					openForEditing.Invoke(null, new object[] { texture, targets, editMode, justCreated });
+				}
+			}
+
+			static Type FindType(string typeName)
+			{
+				foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+				{
+					var type = assembly.GetType(typeName);
+					if (type != null)
+					{
+						return type;
+					}
+				}
+
+				return null;
 			}
 
 			public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
@@ -1573,7 +1622,7 @@ namespace ToonyColorsPro
 				var guiColorA = guiColor;
 				guiColorA.a = 0.5f;
 				GUI.color = value ? guiColor : guiColorA;
-				Rect toggleRect = EditorGUI.PrefixLabel(position, label, ShaderGenerator.SGUILayout.Styles.OrangeBoldLabel);
+				Rect toggleRect = EditorGUI.PrefixLabel(position, label, TCP2_GUI.OrangeBoldLabel);
 				GUI.color = guiColor;
 				value = EditorGUI.Toggle(toggleRect, GUIContent.none, value);
 

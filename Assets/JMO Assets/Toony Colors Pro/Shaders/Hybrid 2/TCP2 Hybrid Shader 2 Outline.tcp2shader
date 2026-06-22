@@ -1,4 +1,4 @@
-﻿// Toony Colors Pro+Mobile 2
+// Toony Colors Pro+Mobile 2
 // (c) 2014-2021 Jean Moreno
 
 Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
@@ -16,6 +16,11 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 	//# Base
 		[MainColor] _BaseColor ("Color", Color) = (1,1,1,1)
 		[MainTexture] _BaseMap ("Albedo", 2D) = "white" {}
+		[Enum(UV1,0,UV2,1,UV3,2)] _BaseUV ("Albedo UV Set", Float) = 0
+		_TCP2AlbedoHSV_H ("Albedo Hue", Range(-180,180)) = 0
+		_TCP2AlbedoHSV_S ("Albedo Saturation", Range(0,1)) = 0
+		_TCP2AlbedoHSV_V ("Albedo Value", Range(-1,1)) = 0
+		[HideInInspector] _TCP2HybridHSVDefaultsMigrated ("TCP2 Hybrid HSV Defaults Migrated", Float) = 0
 		[TCP2ColorNoAlpha] _HColor ("Highlight Color", Color) = (1,1,1,1)
 		[TCP2ColorNoAlpha] _SColor ("Shadow Color", Color) = (0.2,0.2,0.2,1)
 		[Toggle(TCP2_SHADOW_LIGHT_COLOR)] _ShadowColorLightAtten ("Main Light affects Shadow Color", Float) = 1
@@ -57,6 +62,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 		[TCP2HeaderToggle(_NORMALMAP)] _UseNormalMap ("Normal Mapping", Float) = 0
 	//# IF_KEYWORD _NORMALMAP
 		_BumpMap ("Normal Map", 2D) = "bump" {}
+		[Enum(UV1,0,UV2,1,UV3,2)] _BumpUV ("Normal Map UV Set", Float) = 0
 		_BumpScale ("Scale", Range(-1,1)) = 1
 	//# END_IF
 	//# ========================================================
@@ -164,9 +170,8 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 		[TCP2HeaderToggle(TCP2_OCCLUSION)] _UseOcclusion ("Occlusion", Float) = 0
 	//# IF_KEYWORD TCP2_OCCLUSION
 		_OcclusionStrength ("Strength", Range(0.0, 1.0)) = 1.0
-	//# IF_PROPERTY _OcclusionChannel >= 1 || _UseMobileMode == 1
+		[Enum(UV1,0,UV2,1,UV3,2)] _OcclusionUV ("UV Set", Float) = 0
 		[NoScaleOffset] _OcclusionMap ("Texture#Texture (A)", 2D) = "white" {}
-	//# END_IF
 	//# IF_KEYWORD_DISABLE !TCP2_MOBILE
 		[Enum(Albedo Alpha,0,Custom R,1,Custom G,2,Custom B,3,Custom A,4)] _OcclusionChannel ("Texture Channel", Float) = 0
 	//# END_IF_DISABLE
@@ -486,6 +491,8 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 				float4 positionOS   : POSITION;
 				float3 normalOS     : NORMAL;
 				float2 texcoord     : TEXCOORD0;
+				float2 texcoord1    : TEXCOORD1;
+				float2 texcoord2    : TEXCOORD2;
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
@@ -522,7 +529,8 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 				Varyings_Shadow output = (Varyings_Shadow)0;
 				UNITY_SETUP_INSTANCE_ID(input);
 
-				output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
+				float2 baseUv = TCP2_SelectUv(_BaseUV, input.texcoord, input.texcoord1, input.texcoord2);
+				output.uv = baseUv * _BaseMap_ST.xy + _BaseMap_ST.zw;
 				output.positionCS = GetShadowPositionHClip(input);
 				return output;
 			}
@@ -587,6 +595,8 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 			{
 				float4 position     : POSITION;
 				float2 texcoord     : TEXCOORD0;
+				float2 texcoord1    : TEXCOORD1;
+				float2 texcoord2    : TEXCOORD2;
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
@@ -604,7 +614,8 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 				UNITY_SETUP_INSTANCE_ID(input);
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-				output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
+				float2 baseUv = TCP2_SelectUv(_BaseUV, input.texcoord, input.texcoord1, input.texcoord2);
+				output.uv = baseUv * _BaseMap_ST.xy + _BaseMap_ST.zw;
 				output.positionCS = TransformObjectToHClip(input.position.xyz);
 				return output;
 			}
@@ -675,6 +686,8 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 			{
 				float4 position     : POSITION;
 				float2 texcoord     : TEXCOORD0;
+				float2 texcoord1    : TEXCOORD1;
+				float2 texcoord2    : TEXCOORD2;
 				float3 normal       : NORMAL;
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
@@ -694,7 +707,8 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 				UNITY_SETUP_INSTANCE_ID(input);
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-				output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
+				float2 baseUv = TCP2_SelectUv(_BaseUV, input.texcoord, input.texcoord1, input.texcoord2);
+				output.uv = baseUv * _BaseMap_ST.xy + _BaseMap_ST.zw;
 				output.positionCS = TransformObjectToHClip(input.position.xyz);
 				float3 normalWS = TransformObjectToWorldNormal(input.normal);
 				output.normalWS = NormalizeNormalPerVertex(normalWS);
@@ -979,13 +993,24 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 				UNITY_VERTEX_OUTPUT_STEREO
 			};
 
-			Varyings_Shadow vertex_shadow (appdata_base v)
+			struct Attributes_Shadow_BIRP
+			{
+				float4 vertex    : POSITION;
+				float3 normal    : NORMAL;
+				float2 texcoord  : TEXCOORD0;
+				float2 texcoord1 : TEXCOORD1;
+				float2 texcoord2 : TEXCOORD2;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+			};
+
+			Varyings_Shadow vertex_shadow (Attributes_Shadow_BIRP v)
 			{
 				Varyings_Shadow o;
 				UNITY_SETUP_INSTANCE_ID(v);
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 				TRANSFER_SHADOW_CASTER_NORMALOFFSET(o)
-				o.uv = TRANSFORM_TEX(v.texcoord, _BaseMap);
+				float2 baseUv = TCP2_SelectUv(_BaseUV, v.texcoord, v.texcoord1, v.texcoord2);
+				o.uv = baseUv * _BaseMap_ST.xy + _BaseMap_ST.zw;
 				return o;
 			}
 			

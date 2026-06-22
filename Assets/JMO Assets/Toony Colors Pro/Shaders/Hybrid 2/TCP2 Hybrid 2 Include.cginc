@@ -1,4 +1,4 @@
-﻿// Toony Colors Pro+Mobile 2
+// Toony Colors Pro+Mobile 2
 // (c) 2014-2026 Jean Moreno
 
 /// #define fixed half
@@ -63,6 +63,34 @@
 	}
 #endif
 
+// HSV HELPERS
+// source: http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+float3 TCP2_RGBToHSV(float3 c)
+{
+	float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+	float4 p = lerp(float4(c.bg, K.wz), float4(c.gb, K.xy), step(c.b, c.g));
+	float4 q = lerp(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
+
+	float d = q.x - min(q.w, q.y);
+	float e = 1.0e-10;
+	return float3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+float3 TCP2_HSVToRGB(float3 c)
+{
+	c.g = max(c.g, 0.0);
+	float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+	float3 p = abs(frac(c.xxx + K.xyz) * 6.0 - K.www);
+	return c.z * lerp(K.xxx, saturate(p - K.xxx), c.y);
+}
+
+float3 TCP2_ApplyAlbedoHSV(float3 color, float hue, float saturation, float value)
+{
+	float3 hsv = TCP2_RGBToHSV(color);
+	hsv += float3(hue / 360.0, saturation, value);
+	return TCP2_HSVToRGB(hsv);
+}
+
 //================================================================================================================================
 //================================================================================================================================
 
@@ -81,13 +109,18 @@ CBUFFER_START(UnityPerMaterial)
 	half _RampOffset;
 
 	float4 _BumpMap_ST;
+	half _BumpUV;
 	half _BumpScale;
 
 	float4 _BaseMap_ST;
+	half _BaseUV;
 
 	half _Cutoff;
 
 	half4 _BaseColor;
+	half _TCP2AlbedoHSV_H;
+	half _TCP2AlbedoHSV_S;
+	half _TCP2AlbedoHSV_V;
 
 	float4 _EmissionMap_ST;
 	half _EmissionChannel;
@@ -118,6 +151,7 @@ CBUFFER_START(UnityPerMaterial)
 
 	half _OcclusionStrength;
 	half _OcclusionChannel;
+	half _OcclusionUV;
 
 	half _IndirectIntensity;
 	half _SingleIndirectColor;
@@ -144,11 +178,16 @@ UNITY_DOTS_INSTANCING_START(UserPropertyMetadata)
 	UNITY_DOTS_INSTANCED_PROP(float, _RampScale)
 	UNITY_DOTS_INSTANCED_PROP(float, _RampOffset)
 
+	UNITY_DOTS_INSTANCED_PROP(float, _BumpUV)
 	UNITY_DOTS_INSTANCED_PROP(float, _BumpScale)
 
 	UNITY_DOTS_INSTANCED_PROP(float, _Cutoff)
 
 	UNITY_DOTS_INSTANCED_PROP(float4, _BaseColor)
+	UNITY_DOTS_INSTANCED_PROP(float, _BaseUV)
+	UNITY_DOTS_INSTANCED_PROP(float, _TCP2AlbedoHSV_H)
+	UNITY_DOTS_INSTANCED_PROP(float, _TCP2AlbedoHSV_S)
+	UNITY_DOTS_INSTANCED_PROP(float, _TCP2AlbedoHSV_V)
 
 	UNITY_DOTS_INSTANCED_PROP(float, _EmissionChannel)
 	UNITY_DOTS_INSTANCED_PROP(float4, _EmissionColor)
@@ -178,6 +217,7 @@ UNITY_DOTS_INSTANCING_START(UserPropertyMetadata)
 
 	UNITY_DOTS_INSTANCED_PROP(float, _OcclusionStrength)
 	UNITY_DOTS_INSTANCED_PROP(float, _OcclusionChannel)
+	UNITY_DOTS_INSTANCED_PROP(float, _OcclusionUV)
 
 	UNITY_DOTS_INSTANCED_PROP(float, _IndirectIntensity)
 	UNITY_DOTS_INSTANCED_PROP(float, _SingleIndirectColor)
@@ -200,9 +240,14 @@ static float unity_DOTS_Sampled_RampBands;
 static float unity_DOTS_Sampled_RampBandsSmoothing;
 static float unity_DOTS_Sampled_RampScale;
 static float unity_DOTS_Sampled_RampOffset;
+static float unity_DOTS_Sampled_BumpUV;
 static float unity_DOTS_Sampled_BumpScale;
 static float unity_DOTS_Sampled_Cutoff;
 static float4 unity_DOTS_Sampled_BaseColor;
+static float unity_DOTS_Sampled_BaseUV;
+static float unity_DOTS_Sampled_TCP2AlbedoHSV_H;
+static float unity_DOTS_Sampled_TCP2AlbedoHSV_S;
+static float unity_DOTS_Sampled_TCP2AlbedoHSV_V;
 static float unity_DOTS_Sampled_EmissionChannel;
 static float4 unity_DOTS_Sampled_EmissionColor;
 static float4 unity_DOTS_Sampled_MatCapColor;
@@ -225,6 +270,7 @@ static float unity_DOTS_Sampled_FresnelMin;
 static float unity_DOTS_Sampled_ReflectionMapType;
 static float unity_DOTS_Sampled_OcclusionStrength;
 static float unity_DOTS_Sampled_OcclusionChannel;
+static float unity_DOTS_Sampled_OcclusionUV;
 static float unity_DOTS_Sampled_IndirectIntensity;
 static float unity_DOTS_Sampled_SingleIndirectColor;
 static float unity_DOTS_Sampled_OutlineWidth;
@@ -246,10 +292,15 @@ void SetupDOTSTcp2PropertyCaches()
 	unity_DOTS_Sampled_RampScale = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _RampScale);
 	unity_DOTS_Sampled_RampOffset = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _RampOffset);
 	// unity_DOTS_Sampled_BumpMap_ST = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float4 , _BumpMap_ST);
+	unity_DOTS_Sampled_BumpUV = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _BumpUV);
 	unity_DOTS_Sampled_BumpScale = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _BumpScale);
 	// unity_DOTS_Sampled_BaseMap_ST = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float4 , _BaseMap_ST);
 	unity_DOTS_Sampled_Cutoff = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _Cutoff);
 	unity_DOTS_Sampled_BaseColor = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float4 , _BaseColor);
+	unity_DOTS_Sampled_BaseUV = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _BaseUV);
+	unity_DOTS_Sampled_TCP2AlbedoHSV_H = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _TCP2AlbedoHSV_H);
+	unity_DOTS_Sampled_TCP2AlbedoHSV_S = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _TCP2AlbedoHSV_S);
+	unity_DOTS_Sampled_TCP2AlbedoHSV_V = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _TCP2AlbedoHSV_V);
 	// unity_DOTS_Sampled_EmissionMap_ST = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float4 , _EmissionMap_ST);
 	unity_DOTS_Sampled_EmissionChannel = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _EmissionChannel);
 	unity_DOTS_Sampled_EmissionColor = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float4 , _EmissionColor);
@@ -273,6 +324,7 @@ void SetupDOTSTcp2PropertyCaches()
 	unity_DOTS_Sampled_ReflectionMapType = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _ReflectionMapType);
 	unity_DOTS_Sampled_OcclusionStrength = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _OcclusionStrength);
 	unity_DOTS_Sampled_OcclusionChannel = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _OcclusionChannel);
+	unity_DOTS_Sampled_OcclusionUV = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _OcclusionUV);
 	unity_DOTS_Sampled_IndirectIntensity = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _IndirectIntensity);
 	unity_DOTS_Sampled_SingleIndirectColor = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _SingleIndirectColor);
 	unity_DOTS_Sampled_OutlineWidth = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT (float  , _OutlineWidth);
@@ -293,9 +345,14 @@ void SetupDOTSTcp2PropertyCaches()
 #define _RampBandsSmoothing 		unity_DOTS_Sampled_RampBandsSmoothing
 #define _RampScale 					unity_DOTS_Sampled_RampScale
 #define _RampOffset 				unity_DOTS_Sampled_RampOffset
+#define _BumpUV 					unity_DOTS_Sampled_BumpUV
 #define _BumpScale 					unity_DOTS_Sampled_BumpScale
 #define _Cutoff 					unity_DOTS_Sampled_Cutoff
 #define _BaseColor 					unity_DOTS_Sampled_BaseColor
+#define _BaseUV 					unity_DOTS_Sampled_BaseUV
+#define _TCP2AlbedoHSV_H 			unity_DOTS_Sampled_TCP2AlbedoHSV_H
+#define _TCP2AlbedoHSV_S 			unity_DOTS_Sampled_TCP2AlbedoHSV_S
+#define _TCP2AlbedoHSV_V 			unity_DOTS_Sampled_TCP2AlbedoHSV_V
 #define _EmissionChannel 			unity_DOTS_Sampled_EmissionChannel
 #define _EmissionColor 				unity_DOTS_Sampled_EmissionColor
 #define _MatCapColor 				unity_DOTS_Sampled_MatCapColor
@@ -318,6 +375,7 @@ void SetupDOTSTcp2PropertyCaches()
 #define _ReflectionMapType 			unity_DOTS_Sampled_ReflectionMapType
 #define _OcclusionStrength 			unity_DOTS_Sampled_OcclusionStrength
 #define _OcclusionChannel 			unity_DOTS_Sampled_OcclusionChannel
+#define _OcclusionUV 				unity_DOTS_Sampled_OcclusionUV
 #define _IndirectIntensity 			unity_DOTS_Sampled_IndirectIntensity
 #define _SingleIndirectColor 		unity_DOTS_Sampled_SingleIndirectColor
 #define _OutlineWidth 				unity_DOTS_Sampled_OutlineWidth
@@ -433,6 +491,19 @@ half CalculateSpecular(half3 lightDir, half3 viewDir, float3 normal, half specul
 	return max(0, spec);
 }
 
+float2 TCP2_SelectUv(float uvSet, float2 uv1, float2 uv2, float2 uv3)
+{
+	if (uvSet >= 2)
+	{
+		return uv3;
+	}
+	if (uvSet >= 1)
+	{
+		return uv2;
+	}
+	return uv1;
+}
+
 #if defined(_DBUFFER)
 	// Derived from 'ApplyDecal' in URP's DBuffer.hlsl, directly fetch the decal data so that we can blend it accordingly
 	DecalSurfaceData GetDecals(float4 positionCS)
@@ -495,6 +566,10 @@ half CalculateSpecular(half3 lightDir, half3 viewDir, float3 normal, half specul
 	#define NEEDS_TEXCOORD1
 #endif
 
+#ifndef NEEDS_TEXCOORD1
+	#define NEEDS_TEXCOORD1
+#endif
+
 // Vertex input
 struct Attributes
 {
@@ -502,12 +577,8 @@ struct Attributes
 	float3 normal         : NORMAL;
 	float4 tangent        : TANGENT;
 	float4 texcoord0      : TEXCOORD0;
-	#if defined(NEEDS_TEXCOORD1)
-		float2 texcoord1  : TEXCOORD1;
-	#endif
-	#if defined(DYNAMICLIGHTMAP_ON) || defined(UNITY_PASS_META)
-		float2 texcoord2 : TEXCOORD2;
-	#endif
+	float2 texcoord1      : TEXCOORD1;
+	float2 texcoord2      : TEXCOORD2;
 	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -518,6 +589,7 @@ struct Varyings
 	float3 normal          : NORMAL;
 	float4 worldPos        : TEXCOORD0; /* w = fog coords */
 	float4 texcoords       : TEXCOORD1; /* xy = main texcoords, zw = raw texcoords */
+	float4 extraTexcoords  : TEXCOORD8; /* xy = mesh UV2, zw = mesh UV3 */
 #if defined(_NORMALMAP) || (defined(TCP2_MOBILE) && (defined(TCP2_RIM_LIGHTING) || (defined(TCP2_REFLECTIONS) && defined(TCP2_REFLECTIONS_FRESNEL)))) // if normalmap or (mobile + rim or fresnel)
 	float4 tangentWS       : TEXCOORD2; /* w = ndv (mobile) */
 #endif
@@ -585,7 +657,8 @@ VERTEX_OUTPUT Vertex(Attributes input)
 		#else
 			meta_output.positionCS = UnityMetaVertexPosition(input.vertex, input.texcoord1, input.texcoord2, unity_LightmapST, unity_DynamicLightmapST);
 		#endif
-		meta_output.uv = TRANSFORM_TEX(input.texcoord0, _BaseMap);
+		float2 metaBaseUv = TCP2_SelectUv(_BaseUV, input.texcoord0.xy, input.texcoord1.xy, input.texcoord2.xy);
+		meta_output.uv = metaBaseUv * _BaseMap_ST.xy + _BaseMap_ST.zw;
 		return meta_output;
 	#else
 
@@ -598,6 +671,8 @@ VERTEX_OUTPUT Vertex(Attributes input)
 		// Texture Coordinates
 		output.texcoords.xy = input.texcoord0.xy * _BaseMap_ST.xy + _BaseMap_ST.zw;
 		output.texcoords.zw = input.texcoord0.xy;
+		output.extraTexcoords.xy = input.texcoord1.xy;
+		output.extraTexcoords.zw = input.texcoord2.xy;
 
 		#if defined(TCP2_HYBRID_URP)
 			OUTPUT_LIGHTMAP_UV(input.texcoord1, unity_LightmapST, output.staticLightmapUV);
@@ -792,8 +867,12 @@ half4 Fragment (
 	#endif
 
 	// Texture coordinates
-	float2 mainTexcoord = input.texcoords.xy;
 	float2 rawTexcoord = input.texcoords.zw;
+	float2 uv2Texcoord = input.extraTexcoords.xy;
+	float2 uv3Texcoord = input.extraTexcoords.zw;
+	float2 baseRawTexcoord = TCP2_SelectUv(_BaseUV, rawTexcoord, uv2Texcoord, uv3Texcoord);
+	float2 mainTexcoord = baseRawTexcoord * _BaseMap_ST.xy + _BaseMap_ST.zw;
+	float2 bumpRawTexcoord = TCP2_SelectUv(_BumpUV, rawTexcoord, uv2Texcoord, uv3Texcoord);
 
 	// Vectors
 	float3 positionWS = input.worldPos.xyz;
@@ -822,13 +901,14 @@ half4 Fragment (
 	// Base
 
 	half4 albedo = tex2D(_BaseMap, mainTexcoord).rgba;
+	albedo.rgb = TCP2_ApplyAlbedoHSV(albedo.rgb, _TCP2AlbedoHSV_H, _TCP2AlbedoHSV_S, _TCP2AlbedoHSV_V);
 	albedo.rgb *= _BaseColor.rgb;
 	half alpha = albedo.a * _BaseColor.a;
 	half3 emission = half3(0,0,0);
 
 	// Normal Mapping
 	#if defined(_NORMALMAP)
-		half4 normalMap = tex2D(_BumpMap, rawTexcoord * _BumpMap_ST.xy + _BumpMap_ST.zw).rgba;
+		half4 normalMap = tex2D(_BumpMap, bumpRawTexcoord * _BumpMap_ST.xy + _BumpMap_ST.zw).rgba;
 		half3 normalTS = UnpackScaleNormal(normalMap, _BumpScale);
 		normalWS = mul(normalTS, tangentToWorldMatrix);
 
@@ -945,25 +1025,27 @@ half4 Fragment (
 
 	// Occlusion
 	#if defined(TCP2_OCCLUSION)
+		float2 occlusionUv1Texcoord = rawTexcoord * _BaseMap_ST.xy + _BaseMap_ST.zw;
+		float2 occlusionTexcoord = TCP2_SelectUv(_OcclusionUV, occlusionUv1Texcoord, uv2Texcoord, uv3Texcoord);
 		#if defined(TCP2_MOBILE)
-			half occlusion = tex2D(_OcclusionMap, mainTexcoord).a;
+			half occlusion = tex2D(_OcclusionMap, occlusionTexcoord).a;
 		#else
 			half occlusion = 1.0;
 			if (_OcclusionChannel >= 4)
 			{
-				occlusion = tex2D(_OcclusionMap, mainTexcoord).a;
+				occlusion = tex2D(_OcclusionMap, occlusionTexcoord).a;
 			}
 			else if (_OcclusionChannel >= 3)
 			{
-				occlusion = tex2D(_OcclusionMap, mainTexcoord).b;
+				occlusion = tex2D(_OcclusionMap, occlusionTexcoord).b;
 			}
 			else if (_OcclusionChannel >= 2)
 			{
-				occlusion = tex2D(_OcclusionMap, mainTexcoord).g;
+				occlusion = tex2D(_OcclusionMap, occlusionTexcoord).g;
 			}
 			else if (_OcclusionChannel >= 1)
 			{
-				occlusion = tex2D(_OcclusionMap, mainTexcoord).r;
+				occlusion = tex2D(_OcclusionMap, occlusionTexcoord).r;
 			}
 			else
 			{
@@ -1571,10 +1653,10 @@ struct Attributes_Outline
 #if defined(TCP2_UV1_AS_NORMALS) || defined(TCP2_OUTLINE_TEXTURED_VERTEX) || defined(TCP2_OUTLINE_TEXTURED_FRAGMENT)
 	float4 texcoord0 : TEXCOORD0;
 #endif
-#if defined(NEEDS_TEXCOORD1)
+#if defined(NEEDS_TEXCOORD1) || defined(TCP2_OUTLINE_TEXTURED_VERTEX) || defined(TCP2_OUTLINE_TEXTURED_FRAGMENT)
 	float4 texcoord1 : TEXCOORD1;
 #endif
-#if defined(TCP2_UV3_AS_NORMALS)
+#if defined(TCP2_UV3_AS_NORMALS) || defined(TCP2_OUTLINE_TEXTURED_VERTEX) || defined(TCP2_OUTLINE_TEXTURED_FRAGMENT)
 	float4 texcoord2 : TEXCOORD2;
 #endif
 #if defined(TCP2_UV4_AS_NORMALS)
@@ -1744,14 +1826,18 @@ Varyings_Outline vertex_outline (Attributes_Outline input)
 		output.normal = normalize(UnityObjectToWorldNormal(input.normal));
 	#endif
 
+#if defined(TCP2_OUTLINE_TEXTURED_VERTEX) || defined(TCP2_OUTLINE_TEXTURED_FRAGMENT)
+	float2 outlineRawTexcoord = TCP2_SelectUv(_BaseUV, input.texcoord0.xy, input.texcoord1.xy, input.texcoord2.xy);
+#endif
+
 	#if defined(TCP2_OUTLINE_TEXTURED_VERTEX)
-		half4 outlineTexture = tex2Dlod(_BaseMap, float4(input.texcoord0.xy * _BaseMap_ST.xy + _BaseMap_ST.zw, 0, _OutlineTextureLOD));
+		half4 outlineTexture = tex2Dlod(_BaseMap, float4(outlineRawTexcoord * _BaseMap_ST.xy + _BaseMap_ST.zw, 0, _OutlineTextureLOD));
 		output.vcolor *= outlineTexture;
 	#endif
 
 	#if defined(TCP2_OUTLINE_TEXTURED_FRAGMENT)
-		output.texcoord0.xy = input.texcoord0.xy * _BaseMap_ST.xy + _BaseMap_ST.zw;
-		output.texcoord0.zw = input.texcoord0.zw;
+		output.texcoord0.xy = outlineRawTexcoord * _BaseMap_ST.xy + _BaseMap_ST.zw;
+		output.texcoord0.zw = outlineRawTexcoord;
 	#endif
 
 	return output;

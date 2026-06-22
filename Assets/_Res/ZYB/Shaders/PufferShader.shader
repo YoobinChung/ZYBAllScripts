@@ -368,60 +368,6 @@ Shader "ZYB/PufferShader"
         }
     }
 
-    SubShader
-    {
-        Tags
-        {
-            "RenderType" = "Opaque"
-            "Queue" = "Geometry"
-            "IgnoreProjector" = "True"
-        }
-
-        LOD 150
-
-        Pass
-        {
-            Name "Forward"
-            Tags { "LightMode" = "ForwardBase" }
-
-            Cull [_RenderFace]
-            ZWrite [_ZWrite]
-            ZTest LEqual
-            Blend [_SrcBlend] [_DstBlend]
-
-            CGPROGRAM
-            #pragma target 3.0
-            #pragma vertex PufferBuiltInLitVertex
-            #pragma fragment PufferBuiltInLitFragment
-            #pragma multi_compile_instancing
-            #pragma multi_compile_fwdbase
-
-            #include "Assets/_Res/ZYB/Shaders/PufferShaderBuiltIn.cginc"
-            ENDCG
-        }
-
-        Pass
-        {
-            Name "ShadowCaster"
-            Tags { "LightMode" = "ShadowCaster" }
-
-            ZWrite On
-            ZTest LEqual
-            ColorMask 0
-            Cull [_RenderFace]
-
-            CGPROGRAM
-            #pragma target 3.0
-            #pragma vertex PufferBuiltInShadowVertex
-            #pragma fragment PufferBuiltInShadowFragment
-            #pragma multi_compile_instancing
-            #pragma multi_compile_shadowcaster
-
-            #include "Assets/_Res/ZYB/Shaders/PufferShaderBuiltIn.cginc"
-            ENDCG
-        }
-    }
-
     CustomEditor "PufferShaderGUI"
     FallBack Off
 }

@@ -7,8 +7,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using ToonyColorsPro.ShaderGenerator;
-using ToonyColorsPro.Utilities;
 using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEngine;
@@ -22,7 +20,7 @@ namespace ToonyColorsPro
 {
     namespace CustomShaderImporter
     {
-        [ScriptedImporter(0, FILE_EXTENSION)]
+        [ScriptedImporter(1, FILE_EXTENSION)]
         public class TCP2_ShaderImporter : ScriptedImporter
         {
             public const string FILE_EXTENSION = "tcp2shader";
@@ -117,6 +115,16 @@ namespace ToonyColorsPro
                 }
             }
 
+            internal static bool IsUsingURP()
+            {
+#if UNITY_2019_3_OR_NEWER
+                var renderPipeline = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
+#else
+                var renderPipeline = UnityEngine.Rendering.GraphicsSettings.renderPipelineAsset;
+#endif
+                return renderPipeline != null && renderPipeline.GetType().Name.Contains("Universal");
+            }
+
             bool StartsOrEndWithSpecialTag(string line)
             {
                 bool startsWithTag = (line.Length > 4 && line[0] == '/' && line[1] == '*' && line[2] == '*' && line[3] == '*');
@@ -167,7 +175,7 @@ namespace ToonyColorsPro
 
             public override void OnImportAsset(AssetImportContext context)
             {
-                bool isUsingURP = Utils.IsUsingURP();
+                bool isUsingURP = IsUsingURP();
 
                 detectedRenderPipeline = isUsingURP ? "Universal Render Pipeline" : "Built-In Render Pipeline";
 
@@ -343,6 +351,28 @@ namespace ToonyColorsPro
 
                 List<string> tempDisabledOptions = new List<string>();
                 bool hasModifications;
+                static GUIStyle richTextHelpBoxStyle;
+
+                static GUIContent TempContent(string text)
+                {
+                    return EditorGUIUtility.TrTempContent(text);
+                }
+
+                static GUIStyle RichTextHelpBoxStyle
+                {
+                    get
+                    {
+                        if (richTextHelpBoxStyle == null)
+                        {
+                            richTextHelpBoxStyle = new GUIStyle(EditorStyles.helpBox)
+                            {
+                                richText = true,
+                                wordWrap = true
+                            };
+                        }
+                        return richTextHelpBoxStyle;
+                    }
+                }
 
                 void CheckModifications()
                 {
@@ -388,27 +418,27 @@ namespace ToonyColorsPro
 
                 public override void OnInspectorGUI()
                 {
-                    bool isUsingURP = Utils.IsUsingURP();
+                    bool isUsingURP = TCP2_ShaderImporter.IsUsingURP();
                     serializedObject.Update();
 
-                    GUILayout.Label(TCP2_GUI.TempContent(Importer.shaderName));
+                    GUILayout.Label(TempContent(Importer.shaderName));
                     string variantsText = "";
                     if (Importer.variantCount > 0 && Importer.variantCountUsed > 0)
                     {
                         variantsText = string.Format("\nVariants (currently used): <b>{0}</b>\nVariants (including unused): <b>{1}</b>", FormatCount(Importer.variantCountUsed), FormatCount(Importer.variantCount));
                     }
-                    GUILayout.Label(TCP2_GUI.TempContent(string.Format("Detected render pipeline: <b>{0}</b>\nStripped lines: <b>{1}</b>{2}",
+                    GUILayout.Label(TempContent(string.Format("Detected render pipeline: <b>{0}</b>\nStripped lines: <b>{1}</b>{2}",
                         Importer.detectedRenderPipeline,
                         Importer.strippedLinesCount,
                         variantsText)
-                    ), TCP2_GUI.HelpBoxRichTextStyle);
+                    ), RichTextHelpBoxStyle);
 
                     if (Importer.shaderErrors != null && Importer.shaderErrors.Length > 0)
                     {
                         GUILayout.Space(4);
                         var color = GUI.color;
                         GUI.color = new Color32(0xFF, 0x80, 0x80, 0xFF);
-                        GUILayout.Label(TCP2_GUI.TempContent(string.Format("<b>Errors:</b>\n{0}", string.Join("\n", Importer.shaderErrors))), TCP2_GUI.HelpBoxRichTextStyle);
+                        GUILayout.Label(TempContent(string.Format("<b>Errors:</b>\n{0}", string.Join("\n", Importer.shaderErrors))), RichTextHelpBoxStyle);
                         GUI.color = color;
                     }
 
@@ -428,7 +458,7 @@ namespace ToonyColorsPro
 
                     GUILayout.Space(4);
 
-                    if (GUILayout.Button(TCP2_GUI.TempContent("View Source"), GUILayout.ExpandWidth(false)))
+                    if (GUILayout.Button(TempContent("View Source"), GUILayout.ExpandWidth(false)))
                     {
                         string path = Application.temporaryCachePath + "/" + Importer.shaderName.Replace("/", "-") + "_Source.shader";
                         if (File.Exists(path))
@@ -461,11 +491,11 @@ namespace ToonyColorsPro
                     if (Importer.availableOptions.Count > 0)
                     {
                         GUILayout.Space(4);
-                        TCP2_GUI.SeparatorSimple();
+                        GUILayout.Box(GUIContent.none, GUILayout.ExpandWidth(true), GUILayout.Height(1));
                         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                         {
-                            GUILayout.Label(TCP2_GUI.TempContent("Options:"));
-                            GUILayout.Label(TCP2_GUI.TempContent("Disable options you know you won't use to reduce the number of shader variants and improve compilation times, built file size and runtime memory usage."), SGUILayout.Styles.GrayMiniLabelWrap);
+                            GUILayout.Label(TempContent("Options:"));
+                            GUILayout.Label(TempContent("Disable options you know you won't use to reduce the number of shader variants and improve compilation times, built file size and runtime memory usage."), EditorStyles.wordWrappedMiniLabel);
                             GUILayout.Space(4);
                             int lastCategory = -1;
                             foreach (var option in Importer.availableOptions)
@@ -478,7 +508,7 @@ namespace ToonyColorsPro
                                 if ((int) option.category != lastCategory)
                                 {
                                     lastCategory = (int)option.category;
-                                    GUILayout.Label( TCP2_GUI.TempContent(option.GetCategoryLabel()), SGUILayout.Styles.OrangeBoldLabel);
+                                    GUILayout.Label(TempContent(option.GetCategoryLabel()), EditorStyles.boldLabel);
                                 }
 
                                 bool disabled = tempDisabledOptions.Contains(option.label.text);
