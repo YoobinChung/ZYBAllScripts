@@ -18,7 +18,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 		[MainTexture] _BaseMap ("Albedo", 2D) = "white" {}
 		[Enum(UV1,0,UV2,1,UV3,2)] _BaseUV ("Albedo UV Set", Float) = 0
 		_TCP2AlbedoHSV_H ("Albedo Hue", Range(-180,180)) = 0
-		_TCP2AlbedoHSV_S ("Albedo Saturation", Range(0,1)) = 0
+		_TCP2AlbedoHSV_S ("Albedo Saturation", Range(-1,1)) = 0
 		_TCP2AlbedoHSV_V ("Albedo Value", Range(-1,1)) = 0
 		[HideInInspector] _TCP2HybridHSVDefaultsMigrated ("TCP2 Hybrid HSV Defaults Migrated", Float) = 0
 		[TCP2ColorNoAlpha] _HColor ("Highlight Color", Color) = (1,1,1,1)
@@ -198,7 +198,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 		_OutlineMaxWidth ("Maximum Width (Pixels)", Float) = 1
 	//# END_IF
 	//# 
-		[TCP2MaterialKeywordEnumNoPrefix(Normal, _, Vertex Colors, TCP2_COLORS_AS_NORMALS, Tangents, TCP2_TANGENT_AS_NORMALS, UV1, TCP2_UV1_AS_NORMALS, UV2, TCP2_UV2_AS_NORMALS, UV3, TCP2_UV3_AS_NORMALS, UV4, TCP2_UV4_AS_NORMALS)]
+		[TCP2MaterialKeywordEnumNoPrefix(Normal, _, Vertex Colors, TCP2_COLORS_AS_NORMALS, Tangents, TCP2_TANGENT_AS_NORMALS, UV1, TCP2_UV1_AS_NORMALS, UV2, TCP2_UV2_AS_NORMALS, UV3, TCP2_UV3_AS_NORMALS, UV4, TCP2_UV4_AS_NORMALS, Object Position, TCP2_OBJECT_POS_AS_NORMALS)]
 		_NormalsSource ("Outline Normals Source", Float) = 0
 	//# IF_PROPERTY_DISABLE _NormalsSource > 2
 		[TCP2MaterialKeywordEnumNoPrefix(Full XYZ, TCP2_UV_NORMALS_FULL, Compressed XY, _, Compressed ZW, TCP2_UV_NORMALS_ZW)]
@@ -435,7 +435,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 
 			// -------------------------------------
 			// Toony Colors Pro 2 keywords
-			#pragma shader_feature_local _ TCP2_COLORS_AS_NORMALS TCP2_TANGENT_AS_NORMALS TCP2_UV1_AS_NORMALS TCP2_UV2_AS_NORMALS TCP2_UV3_AS_NORMALS TCP2_UV4_AS_NORMALS
+			#pragma shader_feature_local _ TCP2_COLORS_AS_NORMALS TCP2_TANGENT_AS_NORMALS TCP2_UV1_AS_NORMALS TCP2_UV2_AS_NORMALS TCP2_UV3_AS_NORMALS TCP2_UV4_AS_NORMALS TCP2_OBJECT_POS_AS_NORMALS
 			#pragma shader_feature_local _ TCP2_UV_NORMALS_FULL TCP2_UV_NORMALS_ZW
 			#pragma shader_feature_local_vertex _ TCP2_OUTLINE_CONST_SIZE TCP2_OUTLINE_MIN_SIZE TCP2_OUTLINE_MIN_MAX_SIZE
 			#pragma shader_feature_local _ TCP2_OUTLINE_TEXTURED_VERTEX TCP2_OUTLINE_TEXTURED_FRAGMENT
@@ -1098,7 +1098,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 (Outline)"
 
 			// -------------------------------------
 			// Toony Colors Pro 2 keywords
-			#pragma shader_feature_local _ TCP2_COLORS_AS_NORMALS TCP2_TANGENT_AS_NORMALS TCP2_UV1_AS_NORMALS TCP2_UV2_AS_NORMALS TCP2_UV3_AS_NORMALS TCP2_UV4_AS_NORMALS
+			#pragma shader_feature_local _ TCP2_COLORS_AS_NORMALS TCP2_TANGENT_AS_NORMALS TCP2_UV1_AS_NORMALS TCP2_UV2_AS_NORMALS TCP2_UV3_AS_NORMALS TCP2_UV4_AS_NORMALS TCP2_OBJECT_POS_AS_NORMALS
 			#pragma shader_feature_local _ TCP2_UV_NORMALS_FULL TCP2_UV_NORMALS_ZW
 			#pragma shader_feature_local_vertex _ TCP2_OUTLINE_CONST_SIZE TCP2_OUTLINE_MIN_SIZE TCP2_OUTLINE_MIN_MAX_SIZE
 			#pragma shader_feature_local _ TCP2_OUTLINE_TEXTURED_VERTEX TCP2_OUTLINE_TEXTURED_FRAGMENT

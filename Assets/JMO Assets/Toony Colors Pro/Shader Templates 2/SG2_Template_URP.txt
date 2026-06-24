@@ -251,7 +251,7 @@ float3		Max Light Intensity				lighting, imp(constant, default = (1.0, 1.0, 1.0)
 ///
 /// IF OCCLUSION
 	header		Occlusion
-	float		Occlusion									lighting, imp(shader_property_ref, reference = Albedo, swizzle = A)
+	float		Occlusion									lighting, imp(texture, label = "AO Texture", variable = "_OcclusionMap", default = white, channels = r, tiling_offset = true)
 ///
 [[MODULE:PROPERTIES_NEW:Subsurface Scattering]]
 [[MODULE:PROPERTIES_NEW:Reflection]]
@@ -2013,8 +2013,8 @@ Shader "@%SHADER_NAME%@"
 				albedo = albedoAlpha.rgb;
 				alpha = albedoAlpha.a;
 ///
-				[[MODULE:FRAGMENT:AlbedoHSV(albedo)]]
 				albedo *= [[VALUE:Main Color]].rgb;
+				[[MODULE:FRAGMENT:AlbedoHSV(albedo)]]
 				[[MODULE:FRAGMENT:Water(albedo, alpha)]]
 /// IF HOOK_FINAL_ALBEDO
 				albedo.rgb = [[SAMPLE_VALUE_SHADER_PROPERTY:Final Albedo]];
@@ -2638,7 +2638,7 @@ Shader "@%SHADER_NAME%@"
 
 			#pragma target @%SHADER_TARGET%@
 
-			#pragma multi_compile _ TCP2_COLORS_AS_NORMALS TCP2_TANGENT_AS_NORMALS TCP2_UV1_AS_NORMALS TCP2_UV2_AS_NORMALS TCP2_UV3_AS_NORMALS TCP2_UV4_AS_NORMALS
+			#pragma multi_compile _ TCP2_COLORS_AS_NORMALS TCP2_TANGENT_AS_NORMALS TCP2_UV1_AS_NORMALS TCP2_UV2_AS_NORMALS TCP2_UV3_AS_NORMALS TCP2_OBJECT_POS_AS_NORMALS
 			#pragma multi_compile _ TCP2_UV_NORMALS_FULL TCP2_UV_NORMALS_ZW
 			#pragma multi_compile_instancing
 			[[GPU_INSTANCING_OPTIONS]]

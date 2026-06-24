@@ -18,7 +18,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2"
 		[MainTexture] _BaseMap ("Albedo", 2D) = "white" {}
 		[Enum(UV1,0,UV2,1,UV3,2)] _BaseUV ("Albedo UV Set", Float) = 0
 		_TCP2AlbedoHSV_H ("Albedo Hue", Range(-180,180)) = 0
-		_TCP2AlbedoHSV_S ("Albedo Saturation", Range(0,1)) = 0
+		_TCP2AlbedoHSV_S ("Albedo Saturation", Range(-1,1)) = 0
 		_TCP2AlbedoHSV_V ("Albedo Value", Range(-1,1)) = 0
 		[HideInInspector] _TCP2HybridHSVDefaultsMigrated ("TCP2 Hybrid HSV Defaults Migrated", Float) = 0
 		[TCP2ColorNoAlpha] _HColor ("Highlight Color", Color) = (1,1,1,1)

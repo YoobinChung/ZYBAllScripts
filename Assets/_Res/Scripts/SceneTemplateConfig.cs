@@ -426,7 +426,11 @@ public class SceneTemplateConfig : ScriptableObject
             RenderSettings.defaultReflectionResolution = defaultReflectionResolution;
             RenderSettings.reflectionBounces = reflectionBounces;
             RenderSettings.reflectionIntensity = reflectionIntensity;
+#if UNITY_2022_1_OR_NEWER
+            RenderSettings.customReflectionTexture = customReflection;
+#else
             RenderSettings.customReflection = customReflection;
+#endif
 
             RenderSettings.fog = fog;
             RenderSettings.fogMode = fogMode;
@@ -445,7 +449,11 @@ public class SceneTemplateConfig : ScriptableObject
         {
             try
             {
+#if UNITY_2022_1_OR_NEWER
+                return RenderSettings.customReflectionTexture as Cubemap;
+#else
                 return RenderSettings.customReflection;
+#endif
             }
             catch (ArgumentException)
             {

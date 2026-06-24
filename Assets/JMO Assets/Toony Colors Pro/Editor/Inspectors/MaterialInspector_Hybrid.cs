@@ -732,9 +732,9 @@ namespace ToonyColorsPro
 				{
 					case RenderingMode.Opaque:
 						SetRenderQueue(-1);
-						//SetCulling(Culling.Back);
+						//SetCulling(CullMode.Back);
 						SetZWrite(true);
-						SetBlending(BlendFactor.One, BlendFactor.Zero);
+						SetBlending(BlendMode.One, BlendMode.Zero);
 						IterateMaterials(mat =>
 						{
 							mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
@@ -744,9 +744,9 @@ namespace ToonyColorsPro
 
 					case RenderingMode.Fade:
 						SetRenderQueue((int)RenderQueue.Transparent);
-						//SetCulling(Culling.Off);
+						//SetCulling(CullMode.Off);
 						SetZWrite(false);
-						SetBlending(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha);
+						SetBlending(BlendMode.SrcAlpha, BlendMode.OneMinusSrcAlpha);
 						IterateMaterials(mat =>
 						{
 							mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
@@ -756,9 +756,9 @@ namespace ToonyColorsPro
 
 					case RenderingMode.Transparent:
 						SetRenderQueue((int)RenderQueue.Transparent);
-						//SetCulling(Culling.Off);
+						//SetCulling(CullMode.Off);
 						SetZWrite(false);
-						SetBlending(BlendFactor.One, BlendFactor.OneMinusSrcAlpha);
+						SetBlending(BlendMode.One, BlendMode.OneMinusSrcAlpha);
 						IterateMaterials(mat =>
 						{
 							mat.EnableKeyword("_ALPHAPREMULTIPLY_ON");
@@ -779,12 +779,12 @@ namespace ToonyColorsPro
 				IterateMaterials(mat => mat.renderQueue = queue);
 			}
 
-			void SetCulling(Culling culling)
+			void SetCulling(CullMode culling)
 			{
 				IterateMaterials(mat => mat.SetFloat(PROP_CULLING, (float)culling));
 			}
 
-			void SetBlending(BlendFactor src, BlendFactor dst)
+			void SetBlending(BlendMode src, BlendMode dst)
 			{
 				IterateMaterials(mat => mat.SetFloat(PROP_BLEND_SRC, (float)src));
 				IterateMaterials(mat => mat.SetFloat(PROP_BLEND_DST, (float)dst));
