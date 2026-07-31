@@ -8,7 +8,8 @@
     "OpenedFoldouts": [
         "SHADER STATES",
         "LIGHTING",
-        "SURFACE"
+        "SURFACE",
+        "OPTIONS"
     ],
     "UseCustomFont": true,
     "CustomFont": {

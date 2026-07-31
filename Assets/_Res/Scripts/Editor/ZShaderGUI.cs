@@ -38,6 +38,7 @@ public sealed class ZShaderGUI : ShaderGUI
         DrawProperty(materialEditor, properties, "_Cutoff");
 
         DrawTextureSection(materialEditor, properties, "Base", "Albedo", "_BaseMap", "_BaseColor");
+        DrawProperty(materialEditor, properties, "_BaseUV");
         DrawAlbedoHSVProperties(materialEditor, properties);
 
         DrawSection("Shadow");
@@ -46,6 +47,7 @@ public sealed class ZShaderGUI : ShaderGUI
         DrawProperty(materialEditor, properties, "_ShadowSoftness");
 
         DrawTextureSection(materialEditor, properties, "Normal", "Normal", "_NormalMap");
+        DrawProperty(materialEditor, properties, "_NormalUV");
         DrawProperty(materialEditor, properties, "_NormalScale");
 
         DrawSection("Specular");
@@ -62,6 +64,7 @@ public sealed class ZShaderGUI : ShaderGUI
         DrawProperty(materialEditor, properties, "_RimPower");
 
         DrawTextureSection(materialEditor, properties, "AO", "AO", "_OcclusionMap");
+        DrawProperty(materialEditor, properties, "_OcclusionUV");
         DrawProperty(materialEditor, properties, "_OcclusionStrength");
 
         DrawTextureSection(materialEditor, properties, "MatCap", "MatCap", "_MatCapMap", null, false);

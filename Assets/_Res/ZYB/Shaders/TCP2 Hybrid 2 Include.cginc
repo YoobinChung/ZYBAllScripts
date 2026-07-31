@@ -984,7 +984,8 @@ half4 Fragment (
 		#endif
 		half matcapMask = 1.0;
 		#if defined(TCP2_MATCAP_MASK)
-			half4 matcapMaskTex = tex2D(_MatCapMask, mainTexcoord);
+			// MatCap mask uses fixed x1/y1 tiling and must not inherit the base color's tiling (_BaseMap_ST)
+			half4 matcapMaskTex = tex2D(_MatCapMask, baseRawTexcoord);
 			#if defined(TCP2_MOBILE)
 				matcapMask *= matcapMaskTex.a;
 			#else
@@ -1025,7 +1026,8 @@ half4 Fragment (
 
 	// Occlusion
 	#if defined(TCP2_OCCLUSION)
-		float2 occlusionUv1Texcoord = rawTexcoord * _BaseMap_ST.xy + _BaseMap_ST.zw;
+		// AO uses fixed x1/y1 tiling and must not inherit the base color's tiling (_BaseMap_ST)
+		float2 occlusionUv1Texcoord = rawTexcoord;
 		float2 occlusionTexcoord = TCP2_SelectUv(_OcclusionUV, occlusionUv1Texcoord, uv2Texcoord, uv3Texcoord);
 		#if defined(TCP2_MOBILE)
 			half occlusion = tex2D(_OcclusionMap, occlusionTexcoord).a;

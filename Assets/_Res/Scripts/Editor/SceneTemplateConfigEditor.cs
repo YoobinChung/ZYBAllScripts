@@ -17,6 +17,11 @@ public class SceneTemplateConfigEditor : Editor
 
         using (new EditorGUI.DisabledScope(!SceneManager.GetActiveScene().isLoaded))
         {
+            if (GUILayout.Button("Save From Current Scene"))
+            {
+                SaveFromCurrentScene(config);
+            }
+
             if (GUILayout.Button("Apply To Current Scene"))
             {
                 ApplyToCurrentScene(config);
@@ -44,6 +49,19 @@ public class SceneTemplateConfigEditor : Editor
 
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         Debug.Log($"Applied {config.name} to current scene.");
+    }
+
+    static void SaveFromCurrentScene(SceneTemplateConfig config)
+    {
+        Undo.RecordObject(config, "Save Scene Template Config");
+
+        config.SaveFromCurrentScene();
+
+        EditorUtility.SetDirty(config);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        Debug.Log($"Saved current scene settings to {config.name}.");
     }
 }
 
@@ -98,6 +116,7 @@ public class SceneTemplateConfigCreateWindow : EditorWindow
         string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{directory}/{safeName}.asset");
 
         AssetDatabase.CreateAsset(config, assetPath);
+        config.SaveEmbeddedVolumeProfiles();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 

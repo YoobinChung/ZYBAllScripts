@@ -1,8 +1,13 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 [CreateAssetMenu(fileName = "SceneTemplateConfig", menuName = "Config/Scene Template Config")]
 public class SceneTemplateConfig : ScriptableObject
@@ -12,6 +17,7 @@ public class SceneTemplateConfig : ScriptableObject
     public bool applyTransforms = true;
 
     [Header("Scene Settings")]
+    public RenderPipelineSettingsConfig renderPipelineSettings = new RenderPipelineSettingsConfig();
     public RenderSettingsConfig renderSettings = new RenderSettingsConfig();
     public LightmapSettingsConfig lightmapSettings = new LightmapSettingsConfig();
 
@@ -22,16 +28,21 @@ public class SceneTemplateConfig : ScriptableObject
 
     public void SaveFromCurrentScene()
     {
+        renderPipelineSettings.Save();
         renderSettings.Save();
         lightmapSettings.Save();
 
         cameras = CaptureComponents<Camera, CameraConfig>(CameraConfig.FromCamera);
         lights = CaptureComponents<Light, LightConfig>(LightConfig.FromLight);
         volumes = CaptureVolumes();
+#if UNITY_EDITOR
+        SaveEmbeddedVolumeProfiles();
+#endif
     }
 
     public void ApplyToCurrentScene()
     {
+        renderPipelineSettings.Apply();
         renderSettings.Apply();
         lightmapSettings.Apply();
 
@@ -279,22 +290,36 @@ public class SceneTemplateConfig : ScriptableObject
         return target != null && componentType != null ? target.AddComponent(componentType) : null;
     }
 
-    static T GetReflectedValue<T>(object target, string propertyName, T fallback = default)
+    static T GetReflectedValue<T>(object target, string memberName, T fallback = default)
     {
         if (target == null)
         {
             return fallback;
         }
 
-        var property = target.GetType().GetProperty(propertyName);
-        if (property == null || !property.CanRead)
+        var property = target.GetType().GetProperty(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (property != null && property.CanRead)
+        {
+            try
+            {
+                object value = property.GetValue(target, null);
+                return value is T typedValue ? typedValue : fallback;
+            }
+            catch (Exception)
+            {
+                return fallback;
+            }
+        }
+
+        var field = target.GetType().GetField(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
         {
             return fallback;
         }
 
         try
         {
-            object value = property.GetValue(target, null);
+            object value = field.GetValue(target);
             return value is T typedValue ? typedValue : fallback;
         }
         catch (Exception)
@@ -303,22 +328,279 @@ public class SceneTemplateConfig : ScriptableObject
         }
     }
 
-    static void SetReflectedValue(object target, string propertyName, object value)
+#if UNITY_EDITOR
+    public void SaveEmbeddedVolumeProfiles()
+    {
+        if (volumes == null || !EditorUtility.IsPersistent(this))
+        {
+            return;
+        }
+
+        bool changed = false;
+        for (int i = 0; i < volumes.Length; i++)
+        {
+            changed |= volumes[i].EmbedProfileIfNeeded(this);
+        }
+
+        if (changed)
+        {
+            EditorUtility.SetDirty(this);
+            AssetDatabase.SaveAssets();
+        }
+    }
+#endif
+
+    static void SetReflectedValue(object target, string memberName, object value)
     {
         if (target == null)
         {
             return;
         }
 
-        var property = target.GetType().GetProperty(propertyName);
+        var property = target.GetType().GetProperty(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         if (property != null && property.CanWrite)
         {
             try
             {
                 property.SetValue(target, value, null);
+                return;
             }
             catch (Exception)
             {
+            }
+        }
+
+        var field = target.GetType().GetField(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
+        {
+            return;
+        }
+
+        try
+        {
+            field.SetValue(target, value);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    static int GetReflectedEnumValue(object target, string memberName, int fallback = 0)
+    {
+        if (target == null)
+        {
+            return fallback;
+        }
+
+        var property = target.GetType().GetProperty(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (property != null && property.CanRead)
+        {
+            try
+            {
+                object value = property.GetValue(target, null);
+                return value != null ? Convert.ToInt32(value) : fallback;
+            }
+            catch (Exception)
+            {
+                return fallback;
+            }
+        }
+
+        var field = target.GetType().GetField(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
+        {
+            return fallback;
+        }
+
+        try
+        {
+            object value = field.GetValue(target);
+            return value != null ? Convert.ToInt32(value) : fallback;
+        }
+        catch (Exception)
+        {
+            return fallback;
+        }
+    }
+
+    static void SetReflectedEnumValue(object target, string memberName, int value)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        var property = target.GetType().GetProperty(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (property != null && property.CanWrite)
+        {
+            try
+            {
+                object convertedValue = property.PropertyType.IsEnum ? Enum.ToObject(property.PropertyType, value) : Convert.ChangeType(value, property.PropertyType);
+                property.SetValue(target, convertedValue, null);
+                return;
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        var field = target.GetType().GetField(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
+        {
+            return;
+        }
+
+        try
+        {
+            object convertedValue = field.FieldType.IsEnum ? Enum.ToObject(field.FieldType, value) : Convert.ChangeType(value, field.FieldType);
+            field.SetValue(target, convertedValue);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    static T GetReflectedFieldValue<T>(object target, string fieldName, T fallback = default)
+    {
+        if (target == null)
+        {
+            return fallback;
+        }
+
+        var field = target.GetType().GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
+        {
+            return fallback;
+        }
+
+        try
+        {
+            object value = field.GetValue(target);
+            return value is T typedValue ? typedValue : fallback;
+        }
+        catch (Exception)
+        {
+            return fallback;
+        }
+    }
+
+    static void InvokeReflectedMethod(object target, string methodName, params object[] parameters)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        var method = target.GetType().GetMethod(methodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (method == null)
+        {
+            return;
+        }
+
+        try
+        {
+            method.Invoke(target, parameters);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    static T InvokeReflectedMethod<T>(object target, string methodName, T fallback = default)
+    {
+        if (target == null)
+        {
+            return fallback;
+        }
+
+        var method = target.GetType().GetMethod(methodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (method == null || method.ReturnType == typeof(void))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            object value = method.Invoke(target, null);
+            return value is T typedValue ? typedValue : fallback;
+        }
+        catch (Exception)
+        {
+            return fallback;
+        }
+    }
+
+    [Serializable]
+    public class RenderPipelineSettingsConfig
+    {
+        public bool hasData;
+        public RenderPipelineAsset graphicsDefaultRenderPipeline;
+        public RenderPipelineAsset activeRenderPipeline;
+        public int activeQualityLevel;
+        public RenderPipelineAsset[] qualityRenderPipelines = Array.Empty<RenderPipelineAsset>();
+
+        public void Save()
+        {
+            hasData = true;
+            activeQualityLevel = QualitySettings.GetQualityLevel();
+            graphicsDefaultRenderPipeline = GraphicsSettings.defaultRenderPipeline;
+            activeRenderPipeline = GraphicsSettings.currentRenderPipeline;
+
+            string[] qualityNames = QualitySettings.names;
+            qualityRenderPipelines = new RenderPipelineAsset[qualityNames.Length];
+
+            try
+            {
+                for (int i = 0; i < qualityNames.Length; i++)
+                {
+                    QualitySettings.SetQualityLevel(i, false);
+                    qualityRenderPipelines[i] = QualitySettings.renderPipeline;
+                }
+            }
+            finally
+            {
+                RestoreQualityLevel(activeQualityLevel, false);
+            }
+        }
+
+        public void Apply()
+        {
+            if (!hasData)
+            {
+                return;
+            }
+
+            GraphicsSettings.defaultRenderPipeline = graphicsDefaultRenderPipeline;
+
+            int currentQualityLevel = QualitySettings.GetQualityLevel();
+            string[] qualityNames = QualitySettings.names;
+            int count = qualityRenderPipelines != null ? Mathf.Min(qualityRenderPipelines.Length, qualityNames.Length) : 0;
+
+            try
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    QualitySettings.SetQualityLevel(i, false);
+                    QualitySettings.renderPipeline = qualityRenderPipelines[i];
+                }
+            }
+            finally
+            {
+                int restoreLevel = IsValidQualityLevel(activeQualityLevel) ? activeQualityLevel : currentQualityLevel;
+                RestoreQualityLevel(restoreLevel, true);
+            }
+        }
+
+        static bool IsValidQualityLevel(int level)
+        {
+            return level >= 0 && level < QualitySettings.names.Length;
+        }
+
+        static void RestoreQualityLevel(int level, bool applyExpensiveChanges)
+        {
+            if (IsValidQualityLevel(level))
+            {
+                QualitySettings.SetQualityLevel(level, applyExpensiveChanges);
             }
         }
     }
@@ -724,7 +1006,26 @@ public class SceneTemplateConfig : ScriptableObject
     public class UniversalCameraConfig
     {
         public bool hasData;
+        public bool hasExtendedData;
+        public bool renderShadows = true;
+        public int requiresDepthOption = 2;
+        public int requiresColorOption = 2;
+        public int renderType;
+        public int rendererIndex = -1;
+        public string[] cameraStackPaths = Array.Empty<string>();
+        public LayerMask volumeLayerMask = 1;
+        public string volumeTriggerPath;
+        public int volumeFrameworkUpdateMode;
         public bool renderPostProcessing;
+        public int antialiasing;
+        public int antialiasingQuality = 2;
+        public bool stopNaN;
+        public bool dithering;
+        public bool allowXRRendering = true;
+        public bool allowHDROutput = true;
+        public bool useScreenCoordOverride;
+        public Vector4 screenSizeOverride;
+        public Vector4 screenCoordScaleBias;
 
         public static UniversalCameraConfig FromCamera(Camera source)
         {
@@ -737,7 +1038,27 @@ public class SceneTemplateConfig : ScriptableObject
             }
 
             config.hasData = true;
-            config.renderPostProcessing = GetReflectedValue(data, "renderPostProcessing", false);
+            config.hasExtendedData = true;
+            config.renderShadows = GetReflectedValue(data, "renderShadows", true);
+            config.requiresDepthOption = GetReflectedEnumValue(data, "requiresDepthOption", 2);
+            config.requiresColorOption = GetReflectedEnumValue(data, "requiresColorOption", 2);
+            config.renderType = GetReflectedEnumValue(data, "renderType", 0);
+            config.rendererIndex = GetReflectedFieldValue(data, "m_RendererIndex", -1);
+            config.cameraStackPaths = GetCameraStackPaths(data);
+            config.volumeLayerMask = GetReflectedValue(data, "volumeLayerMask", (LayerMask)1);
+            Transform volumeTrigger = GetReflectedValue<Transform>(data, "volumeTrigger");
+            config.volumeTriggerPath = volumeTrigger != null ? GetPath(volumeTrigger) : string.Empty;
+            config.volumeFrameworkUpdateMode = GetReflectedEnumValue(data, "volumeFrameworkUpdateMode", 0);
+            config.renderPostProcessing = GetReflectedValue(data, "renderPostProcessing", GetReflectedFieldValue(data, "m_RenderPostProcessing", false));
+            config.antialiasing = GetReflectedEnumValue(data, "antialiasing", 0);
+            config.antialiasingQuality = GetReflectedEnumValue(data, "antialiasingQuality", 2);
+            config.stopNaN = GetReflectedValue(data, "stopNaN", false);
+            config.dithering = GetReflectedValue(data, "dithering", false);
+            config.allowXRRendering = GetReflectedValue(data, "allowXRRendering", true);
+            config.allowHDROutput = GetReflectedValue(data, "allowHDROutput", true);
+            config.useScreenCoordOverride = GetReflectedValue(data, "useScreenCoordOverride", false);
+            config.screenSizeOverride = GetReflectedValue(data, "screenSizeOverride", Vector4.zero);
+            config.screenCoordScaleBias = GetReflectedValue(data, "screenCoordScaleBias", Vector4.zero);
             return config;
         }
 
@@ -760,7 +1081,80 @@ public class SceneTemplateConfig : ScriptableObject
                 return;
             }
 
+            if (hasExtendedData)
+            {
+                SetReflectedValue(data, "renderShadows", renderShadows);
+                SetReflectedEnumValue(data, "requiresDepthOption", requiresDepthOption);
+                SetReflectedEnumValue(data, "requiresColorOption", requiresColorOption);
+                SetReflectedEnumValue(data, "renderType", renderType);
+                InvokeReflectedMethod(data, "SetRenderer", rendererIndex);
+                SetCameraStack(data, cameraStackPaths);
+                SetReflectedValue(data, "volumeLayerMask", volumeLayerMask);
+                GameObject volumeTrigger = FindObjectByPath(volumeTriggerPath);
+                SetReflectedValue(data, "volumeTrigger", volumeTrigger != null ? volumeTrigger.transform : null);
+                SetReflectedEnumValue(data, "volumeFrameworkUpdateMode", volumeFrameworkUpdateMode);
+            }
+
             SetReflectedValue(data, "renderPostProcessing", renderPostProcessing);
+            SetReflectedValue(data, "m_RenderPostProcessing", renderPostProcessing);
+
+            if (hasExtendedData)
+            {
+                SetReflectedEnumValue(data, "antialiasing", antialiasing);
+                SetReflectedEnumValue(data, "antialiasingQuality", antialiasingQuality);
+                SetReflectedValue(data, "stopNaN", stopNaN);
+                SetReflectedValue(data, "dithering", dithering);
+                SetReflectedValue(data, "allowXRRendering", allowXRRendering);
+                SetReflectedValue(data, "allowHDROutput", allowHDROutput);
+                SetReflectedValue(data, "useScreenCoordOverride", useScreenCoordOverride);
+                SetReflectedValue(data, "screenSizeOverride", screenSizeOverride);
+                SetReflectedValue(data, "screenCoordScaleBias", screenCoordScaleBias);
+            }
+        }
+
+        static string[] GetCameraStackPaths(Component data)
+        {
+            var stack = GetReflectedValue<IList>(data, "cameraStack");
+            if (stack == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            var paths = new List<string>();
+            for (int i = 0; i < stack.Count; i++)
+            {
+                if (stack[i] is Camera camera)
+                {
+                    paths.Add(GetPath(camera.transform));
+                }
+            }
+
+            return paths.ToArray();
+        }
+
+        static void SetCameraStack(Component data, string[] stackPaths)
+        {
+            var stack = GetReflectedValue<IList>(data, "cameraStack");
+            if (stack == null)
+            {
+                return;
+            }
+
+            stack.Clear();
+            if (stackPaths == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < stackPaths.Length; i++)
+            {
+                GameObject cameraObject = FindObjectByPath(stackPaths[i]);
+                Camera camera = cameraObject != null ? cameraObject.GetComponent<Camera>() : null;
+                if (camera != null)
+                {
+                    stack.Add(camera);
+                }
+            }
         }
     }
 
@@ -768,12 +1162,14 @@ public class SceneTemplateConfig : ScriptableObject
     public class UniversalLightConfig
     {
         public bool hasData;
+        public bool hasExtendedData;
         public bool usePipelineSettings = true;
         public uint renderingLayers = 1;
         public bool customShadowLayers;
         public uint shadowRenderingLayers = 1;
         public Vector2 lightCookieSize = Vector2.one;
         public Vector2 lightCookieOffset;
+        public int softShadowQuality;
 
         public static UniversalLightConfig FromLight(Light source)
         {
@@ -786,12 +1182,14 @@ public class SceneTemplateConfig : ScriptableObject
             }
 
             config.hasData = true;
+            config.hasExtendedData = true;
             config.usePipelineSettings = GetReflectedValue(data, "usePipelineSettings", true);
             config.renderingLayers = GetReflectedValue<uint>(data, "renderingLayers", 1);
             config.customShadowLayers = GetReflectedValue(data, "customShadowLayers", false);
             config.shadowRenderingLayers = GetReflectedValue<uint>(data, "shadowRenderingLayers", 1);
             config.lightCookieSize = GetReflectedValue(data, "lightCookieSize", Vector2.one);
             config.lightCookieOffset = GetReflectedValue(data, "lightCookieOffset", Vector2.zero);
+            config.softShadowQuality = GetReflectedEnumValue(data, "softShadowQuality", 0);
             return config;
         }
 
@@ -820,6 +1218,10 @@ public class SceneTemplateConfig : ScriptableObject
             SetReflectedValue(data, "shadowRenderingLayers", shadowRenderingLayers);
             SetReflectedValue(data, "lightCookieSize", lightCookieSize);
             SetReflectedValue(data, "lightCookieOffset", lightCookieOffset);
+            if (hasExtendedData)
+            {
+                SetReflectedEnumValue(data, "softShadowQuality", softShadowQuality);
+            }
         }
     }
 
@@ -833,6 +1235,8 @@ public class SceneTemplateConfig : ScriptableObject
         public TransformConfig transform = new TransformConfig();
 
         [Header("Volume")]
+        public bool profileIsInstantiated;
+        public ScriptableObject sharedProfile;
         public ScriptableObject profile;
         public bool isGlobal = true;
         public float priority;
@@ -841,6 +1245,9 @@ public class SceneTemplateConfig : ScriptableObject
 
         public static VolumeConfig FromVolume(Component source)
         {
+            bool hasInstantiatedProfile = InvokeReflectedMethod(source, "HasInstantiatedProfile", false);
+            var sourceSharedProfile = GetReflectedValue<ScriptableObject>(source, "sharedProfile");
+
             return new VolumeConfig
             {
                 path = GetPath(source.transform),
@@ -848,7 +1255,9 @@ public class SceneTemplateConfig : ScriptableObject
                 active = source.gameObject.activeSelf,
                 enabled = source is Behaviour behaviour && behaviour.enabled,
                 transform = TransformConfig.FromTransform(source.transform),
-                profile = GetReflectedValue<ScriptableObject>(source, "sharedProfile"),
+                profileIsInstantiated = hasInstantiatedProfile,
+                sharedProfile = sourceSharedProfile,
+                profile = hasInstantiatedProfile ? GetReflectedValue<ScriptableObject>(source, "profile") : sourceSharedProfile,
                 isGlobal = GetReflectedValue(source, "isGlobal", true),
                 priority = GetReflectedValue(source, "priority", 0f),
                 blendDistance = GetReflectedValue(source, "blendDistance", 0f),
@@ -887,12 +1296,98 @@ public class SceneTemplateConfig : ScriptableObject
                 ApplyTransform(target.transform, transform);
             }
 
-            SetReflectedValue(volume, "sharedProfile", profile);
+            if (profileIsInstantiated)
+            {
+                SetReflectedValue(volume, "sharedProfile", sharedProfile);
+                SetReflectedValue(volume, "profile", profile);
+            }
+            else
+            {
+                SetReflectedValue(volume, "profile", null);
+                SetReflectedValue(volume, "sharedProfile", profile != null ? profile : sharedProfile);
+            }
+
             SetReflectedValue(volume, "isGlobal", isGlobal);
             SetReflectedValue(volume, "priority", priority);
             SetReflectedValue(volume, "blendDistance", blendDistance);
             SetReflectedValue(volume, "weight", weight);
         }
+
+#if UNITY_EDITOR
+        public bool EmbedProfileIfNeeded(UnityEngine.Object ownerAsset)
+        {
+            bool changed = false;
+
+            if (profileIsInstantiated)
+            {
+                ScriptableObject embeddedProfile = EmbedProfile(ownerAsset, profile, objectName);
+                if (embeddedProfile != profile)
+                {
+                    profile = embeddedProfile;
+                    changed = true;
+                }
+            }
+
+            ScriptableObject embeddedSharedProfile = EmbedProfile(ownerAsset, sharedProfile, objectName + " Shared");
+            if (embeddedSharedProfile != sharedProfile)
+            {
+                sharedProfile = embeddedSharedProfile;
+                if (!profileIsInstantiated)
+                {
+                    profile = embeddedSharedProfile;
+                }
+
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        static ScriptableObject EmbedProfile(UnityEngine.Object ownerAsset, ScriptableObject sourceProfile, string fallbackName)
+        {
+            if (sourceProfile == null || EditorUtility.IsPersistent(sourceProfile))
+            {
+                return sourceProfile;
+            }
+
+            var clone = CloneProfile(sourceProfile);
+            clone.name = string.IsNullOrEmpty(sourceProfile.name) ? fallbackName + " Profile" : sourceProfile.name;
+
+            AssetDatabase.AddObjectToAsset(clone, ownerAsset);
+            if (clone is VolumeProfile volumeProfile)
+            {
+                for (int i = 0; i < volumeProfile.components.Count; i++)
+                {
+                    if (volumeProfile.components[i] != null)
+                    {
+                        AssetDatabase.AddObjectToAsset(volumeProfile.components[i], ownerAsset);
+                    }
+                }
+            }
+
+            return clone;
+        }
+
+        static ScriptableObject CloneProfile(ScriptableObject sourceProfile)
+        {
+            var sourceVolumeProfile = sourceProfile as VolumeProfile;
+            if (sourceVolumeProfile == null)
+            {
+                return Instantiate(sourceProfile);
+            }
+
+            var clone = CreateInstance<VolumeProfile>();
+            for (int i = 0; i < sourceVolumeProfile.components.Count; i++)
+            {
+                if (sourceVolumeProfile.components[i] != null)
+                {
+                    clone.components.Add(Instantiate(sourceVolumeProfile.components[i]));
+                }
+            }
+
+            return clone;
+        }
+#endif
     }
 
 }

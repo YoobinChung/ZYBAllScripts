@@ -1,12 +1,12 @@
 // Toony Colors Pro+Mobile 2
 // (c) 2014-2021 Jean Moreno
 
-Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
+Shader "JMO Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 {
 	Properties
 	{
 		[Enum(Front, 2, Back, 1, Both, 0)] _Cull ("Render Face", Float) = 2.0
-		[TCP2ToggleNoKeyword] _ZWrite ("Depth Write", Float) = 1.0
+		[JMOTCP2ToggleNoKeyword] _ZWrite ("Depth Write", Float) = 1.0
 		[Toggle(_ALPHATEST_ON)] _UseAlphaTest ("Alpha Clipping", Float) = 0
 	//# IF_KEYWORD _ALPHATEST_ON
 		_Cutoff ("Alpha Cutoff", Range(0,1)) = 0.5
@@ -21,8 +21,8 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 		_TCP2AlbedoHSV_S ("Albedo Saturation", Range(-1,1)) = 0
 		_TCP2AlbedoHSV_V ("Albedo Value", Range(-1,1)) = 0
 		[HideInInspector] _TCP2HybridHSVDefaultsMigrated ("TCP2 Hybrid HSV Defaults Migrated", Float) = 0
-		[TCP2ColorNoAlpha] _HColor ("Highlight Color", Color) = (1,1,1,1)
-		[TCP2ColorNoAlpha] _SColor ("Shadow Color", Color) = (0.2,0.2,0.2,1)
+		[JMOTCP2ColorNoAlpha] _HColor ("Highlight Color", Color) = (1,1,1,1)
+		[JMOTCP2ColorNoAlpha] _SColor ("Shadow Color", Color) = (0.2,0.2,0.2,1)
 		[Toggle(TCP2_SHADOW_LIGHT_COLOR)] _ShadowColorLightAtten ("Main Light affects Shadow Color", Float) = 1
 		[Toggle(TCP2_SHADOW_TEXTURE)] _UseShadowTexture ("Enable Shadow Albedo Texture", Float) = 0
 	//# IF_KEYWORD TCP2_SHADOW_TEXTURE
@@ -32,9 +32,9 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 	//# ========================================================
 
 	//# Ramp Shading
-		[TCP2MaterialKeywordEnumNoPrefix(Default,_,Crisp,TCP2_RAMP_CRISP,Bands,TCP2_RAMP_BANDS,Bands Crisp,TCP2_RAMP_BANDS_CRISP,Texture,TCP2_RAMPTEXT)] _RampType ("Ramp Type", Float) = 0
+		[JMOTCP2MaterialKeywordEnumNoPrefix(Default,_,Crisp,TCP2_RAMP_CRISP,Bands,TCP2_RAMP_BANDS,Bands Crisp,TCP2_RAMP_BANDS_CRISP,Texture,TCP2_RAMPTEXT)] _RampType ("Ramp Type", Float) = 0
 	//# IF_KEYWORD TCP2_RAMPTEXT
-		[TCP2Gradient] _Ramp ("Ramp Texture (RGB)", 2D) = "gray" {}
+		[JMOTCP2Gradient] _Ramp ("Ramp Texture (RGB)", 2D) = "gray" {}
 		_RampScale ("Scale", Float) = 1.0
 		_RampOffset ("Offset", Float) = 0.0
 	//# ELSE
@@ -52,7 +52,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 
 	//# ========================================================
 
-		[TCP2HeaderToggle(_NORMALMAP)] _UseNormalMap ("Normal Mapping", Float) = 0
+		[JMOTCP2HeaderToggle(_NORMALMAP)] _UseNormalMap ("Normal Mapping", Float) = 0
 	//# IF_KEYWORD _NORMALMAP
 		_BumpMap ("Normal Map", 2D) = "bump" {}
 		[Enum(UV1,0,UV2,1,UV3,2)] _BumpUV ("Normal Map UV Set", Float) = 0
@@ -60,10 +60,10 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 	//# END_IF
 	//# ========================================================
 
-		[TCP2HeaderToggle(TCP2_SPECULAR)] _UseSpecular ("Specular", Float) = 0
+		[JMOTCP2HeaderToggle(TCP2_SPECULAR)] _UseSpecular ("Specular", Float) = 0
 	//# IF_KEYWORD TCP2_SPECULAR
-		[TCP2MaterialKeywordEnumNoPrefix(GGX,_,Stylized,TCP2_SPECULAR_STYLIZED,Crisp,TCP2_SPECULAR_CRISP)] _SpecularType ("Type", Float) = 0
-		[TCP2ColorNoAlpha] [HDR] _SpecularColor ("Color", Color) = (0.75,0.75,0.75,1)
+		[JMOTCP2MaterialKeywordEnumNoPrefix(GGX,_,Stylized,TCP2_SPECULAR_STYLIZED,Crisp,TCP2_SPECULAR_CRISP)] _SpecularType ("Type", Float) = 0
+		[JMOTCP2ColorNoAlpha] [HDR] _SpecularColor ("Color", Color) = (0.75,0.75,0.75,1)
 	//# IF_KEYWORD TCP2_SPECULAR_STYLIZED || TCP2_SPECULAR_CRISP
 		[PowerSlider(5.0)] _SpecularToonSize ("Size", Range(0.001,1)) = 0.25
 	//# IF_KEYWORD TCP2_SPECULAR_STYLIZED
@@ -81,7 +81,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 	//# END_IF
 	//# ========================================================
 
-		[TCP2HeaderToggle(_EMISSION)] _UseEmission ("Emission", Float) = 0
+		[JMOTCP2HeaderToggle(_EMISSION)] _UseEmission ("Emission", Float) = 0
 	//# IF_KEYWORD _EMISSION
 	//# IF_KEYWORD_DISABLE !TCP2_MOBILE
 		[Enum(No Texture,5,R,0,G,1,B,2,A,3,RGB,4)] _EmissionChannel ("Texture Channel", Float) = 4
@@ -89,26 +89,26 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 	//# IF_PROPERTY _EmissionChannel < 5 || _UseMobileMode == 1
 		_EmissionMap ("Texture#Texture (A)", 2D) = "white" {}
 	//# END_IF
-		[TCP2ColorNoAlpha(HDR)] _EmissionColor ("Color", Color) = (1,1,0,1)
+		[JMOTCP2ColorNoAlpha(HDR)] _EmissionColor ("Color", Color) = (1,1,0,1)
 	//# END_IF
 	//# ========================================================
 
-		[TCP2HeaderToggle(TCP2_RIM_LIGHTING)] _UseRim ("Rim Lighting", Float) = 0
+		[JMOTCP2HeaderToggle(TCP2_RIM_LIGHTING)] _UseRim ("Rim Lighting", Float) = 0
 	//# IF_KEYWORD TCP2_RIM_LIGHTING
-		[TCP2ColorNoAlpha] [HDR] _RimColor ("Color", Color) = (0.8,0.8,0.8,0.5)
+		[JMOTCP2ColorNoAlpha] [HDR] _RimColor ("Color", Color) = (0.8,0.8,0.8,0.5)
 		_RimMin ("Min", Range(0,2)) = 0.5
 		_RimMax ("Max", Range(0,2)) = 1
 		[Toggle(TCP2_RIM_LIGHTING_LIGHTMASK)] _UseRimLightMask ("Light-based Mask", Float) = 1
 	//# END_IF
 	//# ========================================================
 
-		[TCP2HeaderToggle(TCP2_MATCAP)] _UseMatCap ("MatCap", Float) = 0
+		[JMOTCP2HeaderToggle(TCP2_MATCAP)] _UseMatCap ("MatCap", Float) = 0
 	//# IF_KEYWORD TCP2_MATCAP
 	//# IF_KEYWORD_DISABLE !TCP2_MOBILE
 		[Enum(Additive,0,Replace,1)] _MatCapType ("MatCap Blending", Float) = 0
 	//# END_IF_DISABLE
 		[NoScaleOffset] _MatCapTex ("Texture", 2D) = "black" {}
-		[HDR] [TCP2ColorNoAlpha] _MatCapColor ("Color", Color) = (1,1,1,1)
+		[HDR] [JMOTCP2ColorNoAlpha] _MatCapColor ("Color", Color) = (1,1,1,1)
 		[Toggle(TCP2_MATCAP_MASK)] _UseMatCapMask ("Enable Mask", Float) = 0
 	//# IF_KEYWORD TCP2_MATCAP_MASK
 		[NoScaleOffset] _MatCapMask ("Mask Texture#Mask Texture (A)", 2D) = "black" {}
@@ -125,16 +125,16 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 	//# Indirect Diffuse
 		_IndirectIntensity ("Strength", Range(0,1)) = 1
 	//# IF_PROPERTY _IndirectIntensity > 0
-		[TCP2ToggleNoKeyword] _SingleIndirectColor ("Single Indirect Color", Float) = 0
+		[JMOTCP2ToggleNoKeyword] _SingleIndirectColor ("Single Indirect Color", Float) = 0
 	//# END_IF
 	//# 
 
-		[TCP2HeaderToggle(TCP2_REFLECTIONS)] _UseReflections ("Indirect Specular (Environment Reflections)", Float) = 0
+		[JMOTCP2HeaderToggle(TCP2_REFLECTIONS)] _UseReflections ("Indirect Specular (Environment Reflections)", Float) = 0
 	//# IF_KEYWORD TCP2_REFLECTIONS
-		[TCP2ColorNoAlpha] _ReflectionColor ("Color", Color) = (1,1,1,1)
+		[JMOTCP2ColorNoAlpha] _ReflectionColor ("Color", Color) = (1,1,1,1)
 		_ReflectionSmoothness ("Smoothness", Range(0,1)) = 0.5
 	//# IF_KEYWORD_DISABLE !TCP2_MOBILE
-		[TCP2Enum(Disabled,0,Albedo Alpha (Smoothness),1,Custom R (Smoothness),2,Custom G (Smoothness),3,Custom B (Smoothness),4,Custom A (Smoothness),5,Albedo Alpha (Mask),6,Custom R (Mask),7,Custom G (Mask),8,Custom B (Mask),9,Custom A (Mask),10)]
+		[JMOTCP2Enum(Disabled,0,Albedo Alpha (Smoothness),1,Custom R (Smoothness),2,Custom G (Smoothness),3,Custom B (Smoothness),4,Custom A (Smoothness),5,Albedo Alpha (Mask),6,Custom R (Mask),7,Custom G (Mask),8,Custom B (Mask),9,Custom A (Mask),10)]
 		_ReflectionMapType ("Reflection Map", Float) = 0
 	//# END_IF_DISABLE
 	//# IF_PROPERTY (_ReflectionMapType != 0 && _ReflectionMapType != 1 && _ReflectionMapType != 6) || _UseMobileMode == 1
@@ -148,7 +148,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 	//# END_IF
 	//# 
 
-		[TCP2HeaderToggle(TCP2_OCCLUSION)] _UseOcclusion ("Occlusion", Float) = 0
+		[JMOTCP2HeaderToggle(TCP2_OCCLUSION)] _UseOcclusion ("Occlusion", Float) = 0
 	//# IF_KEYWORD TCP2_OCCLUSION
 		_OcclusionStrength ("Strength", Range(0.0, 1.0)) = 1.0
 		[Enum(UV1,0,UV2,1,UV3,2)] _OcclusionUV ("UV Set", Float) = 0
@@ -161,16 +161,16 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 
 	//# ========================================================
 
-		[TCP2HeaderToggle] _UseOutline ("Outline", Float) = 0
+		[JMOTCP2HeaderToggle] _UseOutline ("Outline", Float) = 0
 	//# IF_PROPERTY _UseOutline > 0
 		[HDR] _OutlineColor ("Color", Color) = (0,0,0,1)
-		[TCP2MaterialKeywordEnumNoPrefix(Disabled,_,Vertex Shader,TCP2_OUTLINE_TEXTURED_VERTEX,Pixel Shader,TCP2_OUTLINE_TEXTURED_FRAGMENT)] _OutlineTextureType ("Texture", Float) = 0
+		[JMOTCP2MaterialKeywordEnumNoPrefix(Disabled,_,Vertex Shader,TCP2_OUTLINE_TEXTURED_VERTEX,Pixel Shader,TCP2_OUTLINE_TEXTURED_FRAGMENT)] _OutlineTextureType ("Texture", Float) = 0
 	//# IF_PROPERTY _OutlineTextureType >= 1
 		_OutlineTextureLOD ("Texture LOD", Range(0,8)) = 5
 	//# END_IF
 	//# 
 		_OutlineWidth ("Width", Range(0,10)) = 1
-		[TCP2MaterialKeywordEnumNoPrefix(Disabled,_,Constant,TCP2_OUTLINE_CONST_SIZE,Minimum,TCP2_OUTLINE_MIN_SIZE,Min Max,TCP2_OUTLINE_MIN_MAX_SIZE)] _OutlinePixelSizeType ("Pixel Size", Float) = 0
+		[JMOTCP2MaterialKeywordEnumNoPrefix(Disabled,_,Constant,TCP2_OUTLINE_CONST_SIZE,Minimum,TCP2_OUTLINE_MIN_SIZE,Min Max,TCP2_OUTLINE_MIN_MAX_SIZE)] _OutlinePixelSizeType ("Pixel Size", Float) = 0
 	//# IF_KEYWORD TCP2_OUTLINE_MIN_SIZE || TCP2_OUTLINE_MIN_MAX_SIZE
 		_OutlineMinWidth ("Minimum Width (Pixels)", Float) = 1
 	//# END_IF
@@ -178,18 +178,18 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 		_OutlineMaxWidth ("Maximum Width (Pixels)", Float) = 1
 	//# END_IF
 	//# 
-		[TCP2MaterialKeywordEnumNoPrefix(Normal, _, Vertex Colors, TCP2_COLORS_AS_NORMALS, Tangents, TCP2_TANGENT_AS_NORMALS, UV1, TCP2_UV1_AS_NORMALS, UV2, TCP2_UV2_AS_NORMALS, UV3, TCP2_UV3_AS_NORMALS, UV4, TCP2_UV4_AS_NORMALS)]
+		[JMOTCP2MaterialKeywordEnumNoPrefix(Normal, _, Vertex Colors, TCP2_COLORS_AS_NORMALS, Tangents, TCP2_TANGENT_AS_NORMALS, UV1, TCP2_UV1_AS_NORMALS, UV2, TCP2_UV2_AS_NORMALS, UV3, TCP2_UV3_AS_NORMALS, UV4, TCP2_UV4_AS_NORMALS)]
 		_NormalsSource ("Outline Normals Source", Float) = 0
 	//# IF_PROPERTY_DISABLE _NormalsSource > 2
-		[TCP2MaterialKeywordEnumNoPrefix(Full XYZ, TCP2_UV_NORMALS_FULL, Compressed XY, _, Compressed ZW, TCP2_UV_NORMALS_ZW)]
+		[JMOTCP2MaterialKeywordEnumNoPrefix(Full XYZ, TCP2_UV_NORMALS_FULL, Compressed XY, _, Compressed ZW, TCP2_UV_NORMALS_ZW)]
 		_NormalsUVType ("UV Data Type", Float) = 0
 	//# END_IF_DISABLE
 	//# 
 
 	//# IF_URP
-		[TCP2MaterialKeywordEnumNoPrefix(Disabled,_,Main Directional Light,TCP2_OUTLINE_LIGHTING_MAIN,All Lights,TCP2_OUTLINE_LIGHTING_ALL,Indirect Only, TCP2_OUTLINE_LIGHTING_INDIRECT)] _OutlineLightingTypeURP ("Lighting", Float) = 0
+		[JMOTCP2MaterialKeywordEnumNoPrefix(Disabled,_,Main Directional Light,TCP2_OUTLINE_LIGHTING_MAIN,All Lights,TCP2_OUTLINE_LIGHTING_ALL,Indirect Only, TCP2_OUTLINE_LIGHTING_INDIRECT)] _OutlineLightingTypeURP ("Lighting", Float) = 0
 	//# ELSE
-		[TCP2MaterialKeywordEnumNoPrefix(Disabled,_,Main Directional Light,TCP2_OUTLINE_LIGHTING_MAIN,Indirect Only, TCP2_OUTLINE_LIGHTING_INDIRECT)] _OutlineLightingType ("Lighting", Float) = 0
+		[JMOTCP2MaterialKeywordEnumNoPrefix(Disabled,_,Main Directional Light,TCP2_OUTLINE_LIGHTING_MAIN,Indirect Only, TCP2_OUTLINE_LIGHTING_INDIRECT)] _OutlineLightingType ("Lighting", Float) = 0
 	//# END_IF
 	//#
 	//# IF_KEYWORD TCP2_OUTLINE_LIGHTING_MAIN || TCP2_OUTLINE_LIGHTING_ALL || TCP2_OUTLINE_LIGHTING_INDIRECT
@@ -295,8 +295,11 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 			#pragma shader_feature_local_fragment _ TCP2_RAMPTEXT TCP2_RAMP_CRISP TCP2_RAMP_BANDS TCP2_RAMP_BANDS_CRISP
 			#pragma shader_feature_local_fragment TCP2_SHADOW_LIGHT_COLOR
 			#pragma shader_feature_local_fragment TCP2_SHADOW_TEXTURE
-			#pragma shader_feature_local_fragment TCP2_SPECULAR
-			#pragma shader_feature_local_fragment _ TCP2_SPECULAR_STYLIZED TCP2_SPECULAR_CRISP
+			// Forced to multi_compile so the Specular variant is never stripped from device builds (iOS/Metal).
+			// shader_feature only keeps variants whose keyword is found on a build-time material; runtime-set
+			// or bundled materials can lose the TCP2_SPECULAR variant, making specular disappear after 出包.
+			#pragma multi_compile_local_fragment _ TCP2_SPECULAR
+			#pragma multi_compile_local_fragment _ TCP2_SPECULAR_STYLIZED TCP2_SPECULAR_CRISP
 			#pragma shader_feature_local TCP2_RIM_LIGHTING
 			#pragma shader_feature_local TCP2_RIM_LIGHTING_LIGHTMASK
 			#pragma shader_feature_local TCP2_REFLECTIONS
@@ -664,5 +667,5 @@ Shader "Toony Colors Pro 2/Hybrid Shader 2 Standalone URP"
 
 
 	FallBack "Hidden/InternalErrorShader"
-	CustomEditor "ToonyColorsPro.ShaderGenerator.MaterialInspector_Hybrid"
+	CustomEditor "JMOToonyColorsPro.ShaderGenerator.JMO_MaterialInspector_Hybrid"
 }
